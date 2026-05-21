@@ -1,12 +1,14 @@
-import { promises as fs } from 'fs'
 import path from 'path'
 import { randomInt } from 'crypto'
 import type { PlacedBet } from '@/lib/types'
+import { readJsonArray, writeJsonArray } from '@/lib/json-store'
 
 export type { PlacedBet }
 
 // Avoid visually-confusing chars (0, O, 1, I, L)
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+
+const BETS_FILE = path.join(process.cwd(), 'data', 'bets.json')
 
 function generateCode(length = 6): string {
   let s = ''
@@ -22,7 +24,6 @@ export async function generateUniqueCode(): Promise<string> {
     const code = generateCode()
     if (!existing.has(code)) return code
   }
-  // Fall back to longer code if 6-char collision after 20 tries
   return generateCode(8)
 }
 
@@ -32,33 +33,12 @@ export async function findBetByCode(code: string): Promise<PlacedBet | null> {
   return all.find((b) => b.code === upper) ?? null
 }
 
-const DATA_DIR = path.join(process.cwd(), 'data')
-const BETS_FILE = path.join(DATA_DIR, 'bets.json')
-
-async function ensureFile(): Promise<void> {
-  await fs.mkdir(DATA_DIR, { recursive: true })
-  try {
-    await fs.access(BETS_FILE)
-  } catch {
-    await fs.writeFile(BETS_FILE, '[]', 'utf-8')
-  }
-}
-
 export async function readBets(): Promise<PlacedBet[]> {
-  await ensureFile()
-  const raw = await fs.readFile(BETS_FILE, 'utf-8')
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(raw)
-  } catch {
-    return []
-  }
-  if (!Array.isArray(parsed)) return []
+  const bets = await readJsonArray<PlacedBet>(BETS_FILE)
 
   // Backfill missing booking codes (for bets placed before the code field existed)
   let mutated = false
   const used = new Set<string>()
-  const bets = parsed as PlacedBet[]
   for (const b of bets) {
     if (b.code) used.add(b.code)
   }
@@ -66,8 +46,7 @@ export async function readBets(): Promise<PlacedBet[]> {
     if (!b.code) {
       let code = ''
       do {
-        code = ''
-        for (let i = 0; i < 6; i++) code += CODE_ALPHABET[randomInt(0, CODE_ALPHABET.length)]
+        code = generateCode()
       } while (used.has(code))
       used.add(code)
       b.code = code
@@ -75,7 +54,7 @@ export async function readBets(): Promise<PlacedBet[]> {
     }
   }
   if (mutated) {
-    await fs.writeFile(BETS_FILE, JSON.stringify(bets, null, 2), 'utf-8')
+    await writeJsonArray(BETS_FILE, bets)
   }
   return bets
 }
@@ -83,7 +62,7 @@ export async function readBets(): Promise<PlacedBet[]> {
 export async function addBet(bet: PlacedBet): Promise<void> {
   const all = await readBets()
   all.unshift(bet)
-  await fs.writeFile(BETS_FILE, JSON.stringify(all.slice(0, 200), null, 2), 'utf-8')
+  await writeJsonArray(BETS_FILE, all.slice(0, 200))
 }
 
 export async function updateBet(
@@ -95,7 +74,7 @@ export async function updateBet(
   if (idx === -1) return null
   const updated: PlacedBet = { ...all[idx], ...patch }
   all[idx] = updated
-  await fs.writeFile(BETS_FILE, JSON.stringify(all, null, 2), 'utf-8')
+  await writeJsonArray(BETS_FILE, all)
   return updated
 }
 
@@ -103,6 +82,6 @@ export async function deleteBet(id: string): Promise<boolean> {
   const all = await readBets()
   const next = all.filter((b) => b.id !== id)
   if (next.length === all.length) return false
-  await fs.writeFile(BETS_FILE, JSON.stringify(next, null, 2), 'utf-8')
+  await writeJsonArray(BETS_FILE, next)
   return true
 }

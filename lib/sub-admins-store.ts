@@ -1,35 +1,18 @@
-import { promises as fs } from 'fs'
 import path from 'path'
 import { randomUUID, randomInt } from 'crypto'
 import type { SubAdmin } from '@/lib/types'
+import { readJsonArray, writeJsonArray } from '@/lib/json-store'
 
-const DATA_DIR = path.join(process.cwd(), 'data')
-const FILE = path.join(DATA_DIR, 'sub-admins.json')
+const FILE = path.join(process.cwd(), 'data', 'sub-admins.json')
 
 const REF_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
 
-async function ensureFile(): Promise<void> {
-  await fs.mkdir(DATA_DIR, { recursive: true })
-  try {
-    await fs.access(FILE)
-  } catch {
-    await fs.writeFile(FILE, '[]', 'utf-8')
-  }
-}
-
 export async function readSubAdmins(): Promise<SubAdmin[]> {
-  await ensureFile()
-  const raw = await fs.readFile(FILE, 'utf-8')
-  try {
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? (parsed as SubAdmin[]) : []
-  } catch {
-    return []
-  }
+  return readJsonArray<SubAdmin>(FILE)
 }
 
 async function writeSubAdmins(all: SubAdmin[]): Promise<void> {
-  await fs.writeFile(FILE, JSON.stringify(all, null, 2), 'utf-8')
+  await writeJsonArray(FILE, all)
 }
 
 function generateReferralCode(): string {
@@ -93,7 +76,6 @@ export async function updateSubAdmin(
   const all = await readSubAdmins()
   const idx = all.findIndex((s) => s.id === id)
   if (idx === -1) return null
-  // Don't allow id changes via patch
   const { id: _id, ...rest } = patch
   void _id
   const next: SubAdmin = { ...all[idx], ...rest, id: all[idx].id }

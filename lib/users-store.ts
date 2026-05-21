@@ -1,34 +1,18 @@
-import { promises as fs } from 'fs'
 import path from 'path'
 import { randomUUID } from 'crypto'
 import type { AppUser, Commission } from '@/lib/types'
+import { readJsonArray, writeJsonArray } from '@/lib/json-store'
 
 const DATA_DIR = path.join(process.cwd(), 'data')
 const USERS_FILE = path.join(DATA_DIR, 'users.json')
 const COMMISSIONS_FILE = path.join(DATA_DIR, 'commissions.json')
 
-async function ensureFile(file: string): Promise<void> {
-  await fs.mkdir(DATA_DIR, { recursive: true })
-  try {
-    await fs.access(file)
-  } catch {
-    await fs.writeFile(file, '[]', 'utf-8')
-  }
-}
-
 export async function readUsers(): Promise<AppUser[]> {
-  await ensureFile(USERS_FILE)
-  const raw = await fs.readFile(USERS_FILE, 'utf-8')
-  try {
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? (parsed as AppUser[]) : []
-  } catch {
-    return []
-  }
+  return readJsonArray<AppUser>(USERS_FILE)
 }
 
 async function writeUsers(all: AppUser[]): Promise<void> {
-  await fs.writeFile(USERS_FILE, JSON.stringify(all, null, 2), 'utf-8')
+  await writeJsonArray(USERS_FILE, all)
 }
 
 export async function findUserByEmail(email: string): Promise<AppUser | null> {
@@ -116,14 +100,7 @@ export async function listUsersReferredBy(subAdminId: string): Promise<AppUser[]
 // Commissions
 
 export async function readCommissions(): Promise<Commission[]> {
-  await ensureFile(COMMISSIONS_FILE)
-  const raw = await fs.readFile(COMMISSIONS_FILE, 'utf-8')
-  try {
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? (parsed as Commission[]) : []
-  } catch {
-    return []
-  }
+  return readJsonArray<Commission>(COMMISSIONS_FILE)
 }
 
 export async function addCommission(c: Omit<Commission, 'id' | 'createdAt'>): Promise<Commission> {
@@ -134,7 +111,7 @@ export async function addCommission(c: Omit<Commission, 'id' | 'createdAt'>): Pr
     createdAt: new Date().toISOString(),
   }
   all.unshift(record)
-  await fs.writeFile(COMMISSIONS_FILE, JSON.stringify(all, null, 2), 'utf-8')
+  await writeJsonArray(COMMISSIONS_FILE, all)
   return record
 }
 
