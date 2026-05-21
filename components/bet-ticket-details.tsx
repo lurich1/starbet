@@ -129,8 +129,21 @@ export function BetTicketDetails({ bet, open, onClose, userName }: BetTicketDeta
       </header>
 
       {/* ─── Dark summary header ─── */}
-      <section className="bg-[#1c1c1c] text-white">
-        <div className="max-w-md mx-auto w-full px-4 pt-3 pb-4">
+      <section className="bg-[#1c1c1c] text-white relative overflow-hidden">
+        {/* Trophy watermark for won tickets — sits in the corner behind the
+            totals so the win is celebrated even after the splash dismisses. */}
+        {won && (
+          <Image
+            src="/won_trophy_image.png"
+            alt=""
+            width={160}
+            height={160}
+            priority
+            aria-hidden
+            className="absolute -right-4 -top-2 w-32 h-32 sm:w-40 sm:h-40 object-contain opacity-25 pointer-events-none"
+          />
+        )}
+        <div className="relative max-w-md mx-auto w-full px-4 pt-3 pb-4">
           <div className="flex items-start justify-between text-xs text-white/60">
             <span>Ticket ID: {ticketId}</span>
             <span className="tabular-nums">
@@ -175,6 +188,19 @@ export function BetTicketDetails({ bet, open, onClose, userName }: BetTicketDeta
               />
             )}
           </div>
+
+          {/* Verification code — also on the ticket so the player can show
+              this to a cashier without re-opening the splash. */}
+          {won && (
+            <div className="mt-3 px-3 py-2 rounded-lg bg-success/10 border border-success/30 flex items-center justify-between gap-3">
+              <span className="text-[10px] uppercase tracking-widest text-white/70">
+                Verification Code
+              </span>
+              <span className="text-base font-extrabold font-mono tracking-[0.3em] text-success">
+                {ticketId}
+              </span>
+            </div>
+          )}
 
           {/* Banner: congrats for won, remix for lost */}
           {won ? (

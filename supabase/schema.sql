@@ -122,6 +122,7 @@ create table if not exists public.custom_matches (
     home_score      integer,
     away_score      integer,
     minute          text,
+    minute_set_at   timestamptz,
     start_time      text,
     start_time_utc  timestamptz,
     is_live         boolean not null default false,

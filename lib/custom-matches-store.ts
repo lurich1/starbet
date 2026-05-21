@@ -11,6 +11,7 @@ interface CustomMatchRow {
   home_score: number | null
   away_score: number | null
   minute: string | null
+  minute_set_at: string | null
   start_time: string | null
   start_time_utc: string | null
   is_live: boolean
@@ -18,6 +19,35 @@ interface CustomMatchRow {
   odds_draw: number
   odds_away: number
   created_at: string
+}
+
+/**
+ * Parse a stored "45'" / "90+3'" / "FT" minute string into a starting integer.
+ * Returns null when the minute isn't numeric (e.g. "HT", "FT") — those don't tick.
+ */
+function parseMinute(raw: string | null): number | null {
+  if (!raw) return null
+  const m = raw.match(/^(\d+)(?:\+(\d+))?/)
+  if (!m) return null
+  const base = Number(m[1])
+  const extra = m[2] ? Number(m[2]) : 0
+  if (!Number.isFinite(base)) return null
+  return base + extra
+}
+
+/** Compute the live-ticking minute. Returns the display string. */
+function tickingMinute(row: CustomMatchRow): string | undefined {
+  if (!row.is_live) return row.minute ?? undefined
+  if (row.minute === 'FT' || row.minute === 'HT') return row.minute
+  const start = parseMinute(row.minute)
+  if (start === null) return row.minute ?? undefined
+  if (!row.minute_set_at) return `${start}'`
+  const setAt = new Date(row.minute_set_at).getTime()
+  if (Number.isNaN(setAt)) return `${start}'`
+  const elapsedMin = Math.max(0, Math.floor((Date.now() - setAt) / 60_000))
+  // Cap at 120' so a forgotten live match doesn't display "8473'".
+  const current = Math.min(120, start + elapsedMin)
+  return `${current}'`
 }
 
 function rowToMatch(row: CustomMatchRow): Match {
@@ -29,7 +59,7 @@ function rowToMatch(row: CustomMatchRow): Match {
     awayTeam: row.away_team,
     homeScore: row.home_score ?? undefined,
     awayScore: row.away_score ?? undefined,
-    minute: row.minute ?? undefined,
+    minute: tickingMinute(row),
     startTime: row.start_time ?? undefined,
     startTimeISO: row.start_time_utc ?? undefined,
     isLive: row.is_live,
@@ -53,6 +83,11 @@ function matchToRow(input: Omit<Match, 'id' | 'custom'> & { sport: string }) {
     home_score: input.homeScore ?? null,
     away_score: input.awayScore ?? null,
     minute: input.minute ?? null,
+    // Setting a fresh minute resets the ticking clock to "now"
+    minute_set_at:
+      input.isLive && input.minute && input.minute !== 'FT' && input.minute !== 'HT'
+        ? new Date().toISOString()
+        : null,
     start_time: input.startTime ?? null,
     start_time_utc: input.startTimeISO ?? null,
     is_live: input.isLive,
@@ -104,7 +139,16 @@ export async function updateCustomMatch(
   if (patch.awayTeam !== undefined) dbPatch.away_team = patch.awayTeam
   if (patch.homeScore !== undefined) dbPatch.home_score = patch.homeScore
   if (patch.awayScore !== undefined) dbPatch.away_score = patch.awayScore
-  if (patch.minute !== undefined) dbPatch.minute = patch.minute
+  if (patch.minute !== undefined) {
+    dbPatch.minute = patch.minute
+    // Re-anchor the ticking clock whenever the admin sets a fresh minute
+    // (and the match is/will be live). 'FT' and 'HT' don't tick.
+    const willBeLive = patch.isLive ?? true
+    dbPatch.minute_set_at =
+      willBeLive && patch.minute && patch.minute !== 'FT' && patch.minute !== 'HT'
+        ? new Date().toISOString()
+        : null
+  }
   if (patch.startTime !== undefined) dbPatch.start_time = patch.startTime
   if (patch.startTimeISO !== undefined) dbPatch.start_time_utc = patch.startTimeISO
   if (patch.isLive !== undefined) dbPatch.is_live = patch.isLive

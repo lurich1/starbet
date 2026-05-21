@@ -5,7 +5,9 @@ import { allSportsData } from '@/lib/mock-data'
 import { deriveMarketBook } from '@/lib/markets'
 import type { Match } from '@/lib/types'
 
-export const revalidate = 60
+// 30s so the ticking minute on live custom matches stays close to real
+// time. The Odds API responses inside this handler are cached for 60s.
+export const revalidate = 30
 
 function withDerivedMarkets(m: Match): Match {
   if (m.markets) return m
