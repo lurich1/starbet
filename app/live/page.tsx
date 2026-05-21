@@ -18,6 +18,7 @@ import { useMatches } from '@/hooks/use-matches'
 import { allSportsData, sports } from '@/lib/mock-data'
 import { removeSelectionById, toggleSelection } from '@/lib/bet-slip-utils'
 import { getUserId } from '@/lib/user-session'
+import { formatMoney } from '@/lib/format-money'
 import type { BetSelection, Match } from '@/lib/types'
 
 function getDemoLiveMatches(sport: string): Match[] {
@@ -160,13 +161,13 @@ export default function LivePage() {
                     <Wallet className="w-4 h-4 text-[#2ecc71]" />
                     <span className="text-xs text-muted-foreground">Balance</span>
                     <span className="text-sm font-bold text-foreground tabular-nums">
-                      {balance === null ? '—' : `GHS ${balance.toFixed(2)}`}
+                      {balance === null ? '—' : `GHS ${formatMoney(balance)}`}
                     </span>
                   </Link>
                   <Link href="/me" className="md:hidden">
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#2ecc71]/10 border border-[#2ecc71]/40 text-[11px] font-bold text-foreground tabular-nums">
                       <Wallet className="w-3 h-3 text-[#2ecc71]" />
-                      {balance === null ? '—' : balance.toFixed(2)}
+                      {balance === null ? '—' : formatMoney(balance)}
                     </span>
                   </Link>
                   <Link href={depositHref} className="hidden sm:block">

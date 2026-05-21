@@ -9,6 +9,7 @@ import { Loader2, ArrowLeft, Wallet, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { saveUserSession } from '@/lib/user-session'
+import { formatMoney } from '@/lib/format-money'
 
 import { KORAPAY_SDK_SRC, type KorapaySuccess } from '@/lib/korapay-client'
 
@@ -204,7 +205,7 @@ function DepositForm() {
                   />
                   <Row
                     label="New balance"
-                    value={`GHS ${result.user.balance.toFixed(2)}`}
+                    value={`GHS ${formatMoney(result.user.balance)}`}
                     tone="good"
                   />
                 </div>
@@ -235,7 +236,7 @@ function DepositForm() {
                         Balance
                       </p>
                       <p className="text-sm font-bold text-foreground tabular-nums">
-                        GHS {profile.balance.toFixed(2)}
+                        GHS {formatMoney(profile.balance)}
                       </p>
                     </div>
                   </div>

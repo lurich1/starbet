@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { Eye, EyeOff, Wallet, Banknote, ArrowRight } from 'lucide-react'
 import { getUserId, getUserName } from '@/lib/user-session'
+import { formatMoney } from '@/lib/format-money'
 
 interface UserProfile {
   id: string
@@ -98,7 +99,7 @@ export function HomeBalanceCard() {
             </p>
             <div className="flex items-center gap-2 mt-1 min-w-0">
               <p className="text-2xl sm:text-3xl font-bold text-foreground tabular-nums truncate">
-                {hidden ? '••••••' : `GHS ${balance.toFixed(2)}`}
+                {hidden ? '••••••' : `GHS ${formatMoney(balance)}`}
               </p>
               <button
                 type="button"

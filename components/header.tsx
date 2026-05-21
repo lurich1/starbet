@@ -6,6 +6,7 @@ import { Moon, Sun, Menu, X, Wallet } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { getUserId } from '@/lib/user-session'
+import { formatMoney } from '@/lib/format-money'
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -121,7 +122,7 @@ export function Header() {
                   <Wallet className="w-4 h-4 text-[#2ecc71]" />
                   <span className="text-xs text-muted-foreground">Balance</span>
                   <span className="text-sm font-bold text-foreground tabular-nums">
-                    {balance === null ? '—' : `GHS ${balance.toFixed(2)}`}
+                    {balance === null ? '—' : `GHS ${formatMoney(balance)}`}
                   </span>
                 </Link>
                 <Link href={depositHref} className="hidden sm:block">

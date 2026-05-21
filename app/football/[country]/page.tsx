@@ -12,6 +12,7 @@ import { useMatches } from '@/hooks/use-matches'
 import { countries } from '@/lib/mock-data'
 import { removeSelectionById, toggleSelection } from '@/lib/bet-slip-utils'
 import { getUserId } from '@/lib/user-session'
+import { formatMoney } from '@/lib/format-money'
 import type { BetSelection } from '@/lib/types'
 
 interface PageProps {
@@ -125,7 +126,7 @@ export default function CountryFootballPage({ params }: PageProps) {
                     <Wallet className="w-4 h-4 text-[#2ecc71]" />
                     <span className="text-xs text-muted-foreground">Balance</span>
                     <span className="text-sm font-bold text-foreground tabular-nums">
-                      {balance === null ? '—' : `GHS ${balance.toFixed(2)}`}
+                      {balance === null ? '—' : `GHS ${formatMoney(balance)}`}
                     </span>
                   </Link>
                   <Link href={depositHref} className="hidden sm:block">

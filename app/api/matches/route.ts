@@ -48,7 +48,12 @@ export async function GET(request: Request) {
     )
   }
 
-  const customMatches = hydrateAll(await readCustomMatchesForSport(sport))
+  // Hide finished custom matches from the public feed. A finished match
+  // has minute === 'FT' (set by the admin "Final result" button).
+  const allCustom = await readCustomMatchesForSport(sport)
+  const customMatches = hydrateAll(
+    allCustom.filter((m) => m.minute !== 'FT'),
+  )
   const maybeFilter = (list: Match[]) => (todayOnly ? filterToday(list, tzOffset) : list)
 
   try {

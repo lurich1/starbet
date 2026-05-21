@@ -69,7 +69,7 @@ export function BetTicketDetails({ bet, open, onClose, userName }: BetTicketDeta
           type="button"
           onClick={() => setShowTrophy(false)}
           aria-label="Tap to view ticket"
-          className="absolute inset-0 z-10 flex flex-col items-center bg-background px-6 pt-8 sm:pt-12 animate-in fade-in duration-300"
+          className="absolute inset-0 z-10 flex flex-col items-center px-6 pt-8 sm:pt-12 bg-background/85 backdrop-blur-md animate-in fade-in duration-300"
         >
           {/* Money + headline AT TOP */}
           <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
@@ -82,15 +82,25 @@ export function BetTicketDetails({ bet, open, onClose, userName }: BetTicketDeta
             Congratulations{userName ? `, ${userName}` : ''}!
           </p>
 
-          {/* Trophy below */}
-          <div className="relative w-56 h-56 sm:w-72 sm:h-72 mt-6 sm:mt-8">
+          {/* Trophy — bigger */}
+          <div className="relative w-72 h-72 sm:w-96 sm:h-96 mt-4 sm:mt-6">
             <Image
               src="/won_trophy_image.png"
               alt="Trophy"
               fill
               priority
-              className="object-contain"
+              className="object-contain drop-shadow-xl"
             />
+          </div>
+
+          {/* Verification / claim code */}
+          <div className="mt-2 px-4 py-2 rounded-xl bg-card border border-primary/40 shadow-sm">
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground text-center">
+              Verification Code
+            </p>
+            <p className="text-xl font-extrabold font-mono tracking-[0.3em] text-primary text-center">
+              {ticketId}
+            </p>
           </div>
 
           <p className="mt-auto pb-8 text-[11px] text-muted-foreground">

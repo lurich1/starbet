@@ -37,6 +37,7 @@ import {
   getUserName,
 } from '@/lib/user-session'
 import { KORAPAY_SDK_SRC } from '@/lib/korapay-client'
+import { formatMoney } from '@/lib/format-money'
 
 interface UserProfile {
   id: string
@@ -167,7 +168,7 @@ export default function MePage() {
             }
           : prev,
       )
-      setWithdrawMsg(`Withdrew GHS ${amt.toFixed(2)} successfully.`)
+      setWithdrawMsg(`Withdrew GHS ${formatMoney(amt)} successfully.`)
       setWithdrawAmount('')
     } catch (err) {
       setWithdrawError(err instanceof Error ? err.message : String(err))
@@ -367,7 +368,7 @@ export default function MePage() {
               <span className="truncate">Deposited</span>
             </div>
             <p className="text-sm sm:text-base font-bold text-foreground tabular-nums mt-1 truncate">
-              {balanceHidden ? '••••' : `GHS ${profile.totalDeposited.toFixed(2)}`}
+              {balanceHidden ? '••••' : `GHS ${formatMoney(profile.totalDeposited)}`}
             </p>
           </div>
           <div className="rounded-xl bg-card border border-border p-2.5 sm:p-3 min-w-0">
@@ -376,7 +377,7 @@ export default function MePage() {
               <span className="truncate">Withdrawn</span>
             </div>
             <p className="text-sm sm:text-base font-bold text-foreground tabular-nums mt-1 truncate">
-              {balanceHidden ? '••••' : `GHS ${profile.totalWithdrawn.toFixed(2)}`}
+              {balanceHidden ? '••••' : `GHS ${formatMoney(profile.totalWithdrawn)}`}
             </p>
           </div>
         </div>
@@ -505,7 +506,7 @@ export default function MePage() {
                   Available
                 </p>
                 <p className="text-sm font-bold text-foreground tabular-nums">
-                  GHS {balance.toFixed(2)}
+                  GHS {formatMoney(balance)}
                 </p>
               </div>
             </div>

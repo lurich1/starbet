@@ -55,11 +55,6 @@ export function MatchCard({ match, selections, onToggleSelection }: MatchCardPro
           </span>
         </span>
         <span className="shrink-0 flex items-center gap-2 text-[11px] sm:text-xs">
-          {match.custom && (
-            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border border-primary/40 text-primary bg-primary/10">
-              Custom
-            </span>
-          )}
           {closedLabel && (
             <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border border-destructive/40 text-destructive bg-destructive/10 flex items-center gap-1">
               <Lock className="w-2.5 h-2.5" />
