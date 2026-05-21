@@ -20,6 +20,7 @@ import { useBets } from '@/hooks/use-bets'
 import { getBettingState } from '@/lib/match-betting'
 import { hydrateLegacySelection } from '@/lib/bet-slip-utils'
 import { getCountryFlag } from '@/lib/country-flags'
+import { BetTicketDetails } from '@/components/bet-ticket-details'
 
 interface BetSlipPanelProps {
   selections: BetSelection[]
@@ -546,6 +547,7 @@ interface BetCardProps {
 
 function BetCard({ bet, expanded, onToggle, onSettle, onDelete }: BetCardProps) {
   const [copied, setCopied] = useState(false)
+  const [ticketOpen, setTicketOpen] = useState(false)
 
   const statusColor =
     bet.status === 'won'
@@ -570,6 +572,11 @@ function BetCard({ bet, expanded, onToggle, onSettle, onDelete }: BetCardProps) 
 
   return (
     <div className="bg-secondary rounded-lg overflow-hidden">
+      <BetTicketDetails
+        bet={bet}
+        open={ticketOpen}
+        onClose={() => setTicketOpen(false)}
+      />
       <button
         onClick={onToggle}
         className="w-full px-3 py-2.5 flex items-center justify-between gap-2 hover:bg-secondary/80 transition-colors"
@@ -725,9 +732,21 @@ function BetCard({ bet, expanded, onToggle, onSettle, onDelete }: BetCardProps) 
           )}
 
           {bet.status !== 'pending' && (
-            <p className="text-[11px] text-muted-foreground text-center">
-              This bet is settled and locked.
-            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={(e) => {
+                e.stopPropagation()
+                setTicketOpen(true)
+              }}
+              className={`w-full text-xs ${
+                bet.status === 'won'
+                  ? 'border-success text-success hover:bg-success/10'
+                  : 'border-destructive text-destructive hover:bg-destructive/10'
+              }`}
+            >
+              View Ticket
+            </Button>
           )}
         </div>
       )}
