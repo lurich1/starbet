@@ -132,7 +132,7 @@ export function HomeBalanceCard() {
             <span className="truncate">Deposit</span>
           </Link>
           <Link
-            href="/me"
+            href="/me?withdraw=1"
             className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-primary bg-transparent text-primary hover:bg-primary/10 font-bold text-sm transition-colors min-w-0"
           >
             <Banknote className="w-4 h-4 shrink-0" />
