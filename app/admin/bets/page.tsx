@@ -12,6 +12,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import type { PlacedBet } from '@/lib/types'
+import { getCountryFlag } from '@/lib/country-flags'
 
 type StatusFilter = 'all' | 'pending' | 'won' | 'lost'
 
@@ -90,6 +91,33 @@ export default function AdminBetsPage() {
       setBets((prev) => prev.map((b) => (b.id === id ? data.bet : b)))
     } finally {
       setBusyFor(id, false)
+    }
+  }
+
+  const handleLeg = async (
+    betId: string,
+    selectionId: string,
+    status: 'won' | 'lost' | 'pending',
+  ) => {
+    setBusyFor(betId, true)
+    try {
+      const res = await fetch(`/api/bets/${betId}/selections/${selectionId}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error ?? `HTTP ${res.status}`)
+      }
+      // Re-read the full bet so derived status + payout land in state.
+      const reload = await fetch('/api/bets', { cache: 'no-store' })
+      if (reload.ok) {
+        const d = (await reload.json()) as { bets: PlacedBet[] }
+        setBets(d.bets)
+      }
+    } finally {
+      setBusyFor(betId, false)
     }
   }
 
@@ -288,13 +316,19 @@ export default function AdminBetsPage() {
                               : legStatus === 'lost'
                                 ? 'text-destructive'
                                 : 'text-foreground'
+                          const busyNow = busy.has(bet.id)
+                          const canSettleLeg =
+                            bet.status === 'pending' && Boolean(s.id)
                           return (
                             <div
                               key={s.id || s.matchId}
-                              className={`text-xs py-1 pl-2 pr-1 rounded-r ${legBorder}`}
+                              className={`text-xs py-1.5 pl-2 pr-1 rounded-r ${legBorder}`}
                             >
                               <div className="flex justify-between gap-2">
                                 <span className={`truncate font-medium ${teamColor}`}>
+                                  <span aria-hidden className="mr-1">
+                                    {getCountryFlag(s.match.country)}
+                                  </span>
                                   {s.match.homeTeam} vs {s.match.awayTeam}
                                   {legStatus === 'won' && (
                                     <span className="ml-1.5 text-[10px] font-bold">✓</span>
@@ -310,6 +344,50 @@ export default function AdminBetsPage() {
                               <p className="text-[11px] text-muted-foreground">
                                 Pick: <span className="text-foreground">{pick}</span> · {s.match.league}
                               </p>
+                              {canSettleLeg && (
+                                <div className="flex gap-1.5 mt-1.5">
+                                  <Button
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      void handleLeg(
+                                        bet.id,
+                                        s.id!,
+                                        legStatus === 'won' ? 'pending' : 'won',
+                                      )
+                                    }}
+                                    disabled={busyNow}
+                                    className={`h-6 text-[10px] px-2 ${
+                                      legStatus === 'won'
+                                        ? 'bg-success text-success-foreground'
+                                        : 'bg-success/15 text-success hover:bg-success/25 border border-success/30'
+                                    }`}
+                                    title="Mark this leg won"
+                                  >
+                                    Won
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      void handleLeg(
+                                        bet.id,
+                                        s.id!,
+                                        legStatus === 'lost' ? 'pending' : 'lost',
+                                      )
+                                    }}
+                                    disabled={busyNow}
+                                    className={`h-6 text-[10px] px-2 ${
+                                      legStatus === 'lost'
+                                        ? 'bg-destructive text-destructive-foreground'
+                                        : 'bg-destructive/15 text-destructive hover:bg-destructive/25 border border-destructive/30'
+                                    }`}
+                                    title="Mark this leg lost"
+                                  >
+                                    Lost
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           )
                         })}
@@ -468,18 +546,18 @@ function BetActions({
             onClick={() => onSettle('won')}
             disabled={busy}
             className="h-7 text-xs px-2 bg-success/20 text-success hover:bg-success/30 border border-success/30"
-            title="Pay out the player and lock this bet"
+            title="Mark every leg won and pay out (bulk action)"
           >
-            Cashout
+            Cashout all
           </Button>
           <Button
             size="sm"
             onClick={() => onSettle('lost')}
             disabled={busy}
             className="h-7 text-xs px-2 bg-destructive/20 text-destructive hover:bg-destructive/30 border border-destructive/30"
-            title="Mark as lost and lock this bet"
+            title="Mark every leg lost (bulk action)"
           >
-            Lock it
+            Lock all
           </Button>
         </>
       ) : (

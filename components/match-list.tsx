@@ -11,6 +11,7 @@ import {
   make1X2Selection,
 } from '@/lib/bet-slip-utils'
 import { MarketsPanel } from '@/components/markets-panel'
+import { getCountryFlag } from '@/lib/country-flags'
 
 interface MatchListProps {
   matches: Match[]
@@ -177,7 +178,10 @@ function MatchRow({
           )}
         </div>
         {showLeague && (
-          <span className="text-[10px] sm:text-xs text-muted-foreground truncate">{match.league}</span>
+          <span className="text-[10px] sm:text-xs text-muted-foreground truncate flex items-center gap-1">
+            <span aria-hidden>{getCountryFlag(match.country)}</span>
+            <span className="truncate">{match.league}</span>
+          </span>
         )}
       </div>
 

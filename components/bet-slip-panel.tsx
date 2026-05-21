@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input'
 import { useBets } from '@/hooks/use-bets'
 import { getBettingState } from '@/lib/match-betting'
 import { hydrateLegacySelection } from '@/lib/bet-slip-utils'
+import { getCountryFlag } from '@/lib/country-flags'
 
 interface BetSlipPanelProps {
   selections: BetSelection[]
@@ -661,8 +662,11 @@ function BetCard({ bet, expanded, onToggle, onSettle, onDelete }: BetCardProps) 
                       {s.odds.toFixed(2)}
                     </span>
                   </div>
-                  <p className="text-[11px] text-muted-foreground truncate">
-                    {s.marketLabel}: {s.outcomeLabel} · {s.match.league}
+                  <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
+                    <span aria-hidden className="shrink-0">{getCountryFlag(s.match.country)}</span>
+                    <span className="truncate">
+                      {s.marketLabel}: {s.outcomeLabel} · {s.match.league}
+                    </span>
                   </p>
                 </div>
               )

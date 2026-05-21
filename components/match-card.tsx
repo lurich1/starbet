@@ -11,6 +11,7 @@ import {
   make1X2Selection,
 } from '@/lib/bet-slip-utils'
 import { MarketsPanel } from '@/components/markets-panel'
+import { getCountryFlag } from '@/lib/country-flags'
 
 interface MatchCardProps {
   match: Match
@@ -44,8 +45,14 @@ export function MatchCard({ match, selections, onToggleSelection }: MatchCardPro
     >
       {/* League header */}
       <div className="px-3 sm:px-4 py-2 bg-secondary/50 flex items-center justify-between gap-2">
-        <span className="text-[11px] sm:text-xs text-muted-foreground uppercase tracking-wide truncate min-w-0">
-          {match.league}{match.country ? ` — ${match.country}` : ''}
+        <span className="text-[11px] sm:text-xs text-muted-foreground uppercase tracking-wide truncate min-w-0 flex items-center gap-1.5">
+          <span aria-hidden className="text-sm shrink-0">
+            {getCountryFlag(match.country)}
+          </span>
+          <span className="truncate">
+            {match.league}
+            {match.country ? ` — ${match.country}` : ''}
+          </span>
         </span>
         <span className="shrink-0 flex items-center gap-2 text-[11px] sm:text-xs">
           {match.custom && (
