@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { X } from 'lucide-react'
 import type { BetSelection } from '@/lib/types'
@@ -22,15 +22,6 @@ export function MobileNav({
   activeTab,
 }: MobileNavProps) {
   const [isSlipOpen, setIsSlipOpen] = useState(false)
-
-  useEffect(() => {
-    if (!isSlipOpen) return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = prev
-    }
-  }, [isSlipOpen])
 
   return (
     <>
@@ -131,7 +122,10 @@ function MobileBetSlipDrawer({
         onClick={onClose}
         aria-hidden
       />
-      <div className="absolute bottom-0 left-0 right-0 bg-card border-t border-border rounded-t-2xl max-h-[88vh] overflow-y-auto pb-[env(safe-area-inset-bottom)]">
+      <div
+        className="absolute bottom-0 left-0 right-0 bg-card border-t border-border rounded-t-2xl max-h-[88vh] overflow-y-auto pb-[env(safe-area-inset-bottom)]"
+        style={{ overscrollBehavior: 'contain' }}
+      >
         <div className="sticky top-0 bg-card px-4 py-3 border-b border-border flex items-center justify-between">
           <h2 className="font-bold text-lg text-foreground">Bet Slip</h2>
           <button

@@ -132,9 +132,26 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    -webkit-tap-highlight-color: transparent;
+  }
+  html {
+    /* Prevent horizontal scroll/zoom while keeping sticky headers working */
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    /* iOS momentum scrolling */
+    -webkit-overflow-scrolling: touch;
   }
   body {
     @apply bg-background text-foreground;
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+  /* Stop horizontal-scroll containers (sport pills, league chips) from
+     dragging the whole page when they hit a boundary. */
+  .overflow-x-auto,
+  .custom-scrollbar {
+    overscroll-behavior-x: contain;
   }
 }
 
