@@ -216,98 +216,98 @@ export default function MePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f5f5] dark:bg-background flex flex-col pb-20 xl:pb-0 max-w-lg mx-auto w-full shadow-sm">
+    <div className="min-h-screen bg-[#f5f5f5] dark:bg-background flex flex-col pb-20 xl:pb-0 max-w-lg mx-auto w-full shadow-sm overflow-x-hidden">
       {/* Profile header — gradient hero */}
       <header className="bg-gradient-to-br from-[#1c1512] via-[#241a14] to-[#2a2018] text-white relative">
-        <div className="px-4 pt-5 pb-4 flex items-center gap-3">
+        <div className="px-3 sm:px-4 pt-5 pb-4 flex items-center gap-2.5 sm:gap-3">
           <div className="relative shrink-0">
-            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#2ecc71] to-[#27ae60] flex items-center justify-center text-xl font-bold text-white shadow-lg">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-[#2ecc71] to-[#27ae60] flex items-center justify-center text-lg sm:text-xl font-bold text-white shadow-lg">
               {profile.name.charAt(0).toUpperCase()}
             </div>
-            <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#2ecc71] border-2 border-[#1c1512]" />
+            <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-[#2ecc71] border-2 border-[#1c1512]" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <p className="font-bold text-lg truncate">{profile.name}</p>
+              <p className="font-bold text-base sm:text-lg truncate">{profile.name}</p>
               <Shield className="w-4 h-4 text-[#2ecc71] shrink-0" />
             </div>
             <button
               type="button"
               onClick={copyUserId}
-              className="flex items-center gap-1 text-xs text-white/50 hover:text-white/80 transition-colors"
+              className="flex items-center gap-1 text-[11px] sm:text-xs text-white/50 hover:text-white/80 transition-colors max-w-full"
             >
-              <span className="font-mono">ID: {profile.id.slice(0, 8)}…</span>
+              <span className="font-mono truncate">ID: {profile.id.slice(0, 8)}…</span>
               {copied ? (
-                <Check className="w-3 h-3 text-[#2ecc71]" />
+                <Check className="w-3 h-3 text-[#2ecc71] shrink-0" />
               ) : (
-                <Copy className="w-3 h-3" />
+                <Copy className="w-3 h-3 shrink-0" />
               )}
             </button>
           </div>
           <Link
             href="/"
-            className="text-xs text-[#2ecc71] font-semibold hover:underline shrink-0 px-3 py-1.5 rounded-full border border-[#2ecc71]/40 hover:bg-[#2ecc71]/10 transition-colors"
+            className="text-xs text-[#2ecc71] font-semibold hover:underline shrink-0 px-2.5 sm:px-3 py-1.5 rounded-full border border-[#2ecc71]/40 hover:bg-[#2ecc71]/10 transition-colors"
           >
             Home
           </Link>
         </div>
 
         {/* Balance card */}
-        <div className="px-4 pb-5">
-          <div className="rounded-2xl bg-black/30 border border-white/10 backdrop-blur p-4">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[11px] uppercase tracking-wide text-white/50 font-semibold">
+        <div className="px-3 sm:px-4 pb-5">
+          <div className="rounded-2xl bg-black/30 border border-white/10 backdrop-blur p-3.5 sm:p-4">
+            <div className="flex items-center justify-between mb-1 gap-2">
+              <span className="text-[11px] uppercase tracking-wide text-white/50 font-semibold truncate">
                 Total Balance
               </span>
               <button
                 type="button"
                 onClick={() => setBalanceHidden((v) => !v)}
-                className="p-1 rounded-md text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+                className="shrink-0 p-1 rounded-md text-white/60 hover:text-white hover:bg-white/10 transition-colors"
                 aria-label={balanceHidden ? 'Show balance' : 'Hide balance'}
               >
                 {balanceHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
-            <p className="text-3xl font-bold text-white tabular-nums mb-4">
+            <p className="text-2xl sm:text-3xl font-bold text-white tabular-nums mb-4 truncate">
               {balanceHidden ? '••••••' : `GHS ${balance.toFixed(2)}`}
             </p>
 
             <div className="flex gap-2">
               <Link
                 href={depositHref}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-[#2ecc71] hover:bg-[#27ae60] text-white font-bold text-sm transition-colors shadow-sm"
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-[#2ecc71] hover:bg-[#27ae60] text-white font-bold text-sm transition-colors shadow-sm min-w-0"
               >
-                <Wallet className="w-4 h-4" strokeWidth={2.25} />
-                Deposit
+                <Wallet className="w-4 h-4 shrink-0" strokeWidth={2.25} />
+                <span className="truncate">Deposit</span>
               </Link>
               <button
                 type="button"
                 onClick={handleWithdraw}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-[#2ecc71] bg-transparent text-[#2ecc71] hover:bg-[#2ecc71]/10 font-bold text-sm transition-colors"
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-[#2ecc71] bg-transparent text-[#2ecc71] hover:bg-[#2ecc71]/10 font-bold text-sm transition-colors min-w-0"
               >
-                <Banknote className="w-4 h-4" strokeWidth={2.25} />
-                Withdraw
+                <Banknote className="w-4 h-4 shrink-0" strokeWidth={2.25} />
+                <span className="truncate">Withdraw</span>
               </button>
             </div>
           </div>
 
           {/* Stats row */}
           <div className="grid grid-cols-2 gap-2 mt-3">
-            <div className="rounded-xl bg-white/5 border border-white/10 p-3">
+            <div className="rounded-xl bg-white/5 border border-white/10 p-2.5 sm:p-3 min-w-0">
               <div className="flex items-center gap-1.5 text-white/50 text-[10px] uppercase tracking-wide font-semibold">
-                <TrendingUp className="w-3 h-3 text-[#2ecc71]" />
-                Deposited
+                <TrendingUp className="w-3 h-3 text-[#2ecc71] shrink-0" />
+                <span className="truncate">Deposited</span>
               </div>
-              <p className="text-base font-bold text-white tabular-nums mt-1">
+              <p className="text-sm sm:text-base font-bold text-white tabular-nums mt-1 truncate">
                 {balanceHidden ? '••••' : `GHS ${profile.totalDeposited.toFixed(2)}`}
               </p>
             </div>
-            <div className="rounded-xl bg-white/5 border border-white/10 p-3">
+            <div className="rounded-xl bg-white/5 border border-white/10 p-2.5 sm:p-3 min-w-0">
               <div className="flex items-center gap-1.5 text-white/50 text-[10px] uppercase tracking-wide font-semibold">
-                <TrendingDown className="w-3 h-3 text-amber-400" />
-                Withdrawn
+                <TrendingDown className="w-3 h-3 text-amber-400 shrink-0" />
+                <span className="truncate">Withdrawn</span>
               </div>
-              <p className="text-base font-bold text-white tabular-nums mt-1">
+              <p className="text-sm sm:text-base font-bold text-white tabular-nums mt-1 truncate">
                 {balanceHidden ? '••••' : `GHS ${profile.totalWithdrawn.toFixed(2)}`}
               </p>
             </div>
@@ -316,7 +316,7 @@ export default function MePage() {
       </header>
 
       {/* Quick links */}
-      <section className="-mt-3 mx-3 mb-3 relative z-10">
+      <section className="-mt-3 mx-2.5 sm:mx-3 mb-3 relative z-10">
         <div className="grid grid-cols-3 bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
           {QUICK_LINKS.map((item, i) => {
             const Icon = item.icon
@@ -324,12 +324,12 @@ export default function MePage() {
               <Link
                 key={item.label}
                 href={item.href}
-                className={`flex flex-col items-center gap-1.5 py-4 px-2 hover:bg-secondary/40 transition-colors ${
+                className={`flex flex-col items-center gap-1.5 py-3.5 px-1.5 sm:px-2 hover:bg-secondary/40 transition-colors min-w-0 ${
                   i > 0 ? 'border-l border-border' : ''
                 }`}
               >
-                <Icon className="w-5 h-5 text-[#2ecc71]" />
-                <span className="text-[11px] text-center leading-tight font-medium text-foreground">
+                <Icon className="w-5 h-5 text-[#2ecc71] shrink-0" />
+                <span className="text-[10px] sm:text-[11px] text-center leading-tight font-medium text-foreground line-clamp-2">
                   {item.label}
                   {'badge' in item && item.badge ? ` (${item.badge})` : ''}
                 </span>
@@ -340,7 +340,7 @@ export default function MePage() {
       </section>
 
       {/* Menu list */}
-      <main className="flex-1 px-3">
+      <main className="flex-1 px-2.5 sm:px-3">
         <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
           <ul className="divide-y divide-border">
             {MENU_ITEMS.map((item) => {
