@@ -221,11 +221,11 @@ export function BetTicketDetails({ bet, open, onClose, userName }: BetTicketDeta
               this to a cashier without re-opening the splash. */}
           {won && (
             <div className="mt-3 px-3 py-2 rounded-lg bg-success/10 border border-success/30 flex items-center justify-between gap-3">
-              <span className="text-[10px] uppercase tracking-widest text-white/70">
+              <span className="text-[10px] uppercase tracking-widest text-white/70 shrink-0">
                 Verification Code
               </span>
-              <span className="text-base font-extrabold font-mono tracking-[0.3em] text-success">
-                {ticketId}
+              <span className="text-sm font-extrabold font-mono tracking-wider text-success tabular-nums truncate">
+                {verificationCode}
               </span>
             </div>
           )}
