@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import { ArrowLeft, Home, Headphones, X, Sparkles, Check, Trophy, Share2 } from 'lucide-react'
 import type { PlacedBet } from '@/lib/types'
@@ -19,25 +18,10 @@ interface BetTicketDetailsProps {
 }
 
 /**
- * Sportybet-style ticket details view. Won bets get a trophy celebration
- * splash first (auto-fades or tap-through) before showing the receipt.
+ * Sportybet-style ticket details view. Won tickets show a larger trophy
+ * embedded on the ticket itself — no splash overlay.
  */
-export function BetTicketDetails({ bet, open, onClose, userName }: BetTicketDetailsProps) {
-  const [showTrophy, setShowTrophy] = useState(bet.status === 'won')
-
-  // Reset trophy splash any time the modal is reopened.
-  useEffect(() => {
-    if (open) setShowTrophy(bet.status === 'won')
-  }, [open, bet.id, bet.status])
-
-  // Auto-fade the trophy after 2 minutes so the celebration sticks around.
-  // Player can also tap anywhere to dismiss it sooner.
-  useEffect(() => {
-    if (!open || !showTrophy) return
-    const t = setTimeout(() => setShowTrophy(false), 120_000)
-    return () => clearTimeout(t)
-  }, [open, showTrophy])
-
+export function BetTicketDetails({ bet, open, onClose, userName: _userName }: BetTicketDetailsProps) {
   if (!open) return null
 
   const settled = bet.status !== 'pending'
@@ -63,52 +47,6 @@ export function BetTicketDetails({ bet, open, onClose, userName }: BetTicketDeta
         paddingBottom: 'env(safe-area-inset-bottom)',
       }}
     >
-      {/* ─── Trophy celebration splash (won only) ─── */}
-      {won && showTrophy && (
-        <button
-          type="button"
-          onClick={() => setShowTrophy(false)}
-          aria-label="Tap to view ticket"
-          className="absolute inset-0 z-10 flex flex-col items-center px-6 pt-8 sm:pt-12 bg-background/85 backdrop-blur-md animate-in fade-in duration-300"
-        >
-          {/* Money + headline AT TOP */}
-          <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-            You won big
-          </p>
-          <p className="mt-2 text-4xl sm:text-5xl font-extrabold text-success tabular-nums">
-            GHS {formatMoney(totalReturn)}
-          </p>
-          <p className="mt-2 text-sm font-semibold text-foreground">
-            Congratulations{userName ? `, ${userName}` : ''}!
-          </p>
-
-          {/* Trophy — bigger */}
-          <div className="relative w-72 h-72 sm:w-96 sm:h-96 mt-4 sm:mt-6">
-            <Image
-              src="/won_trophy_image.png"
-              alt="Trophy"
-              fill
-              priority
-              className="object-contain drop-shadow-xl"
-            />
-          </div>
-
-          {/* Verification / claim code */}
-          <div className="mt-2 px-4 py-2 rounded-xl bg-card border border-primary/40 shadow-sm">
-            <p className="text-[10px] uppercase tracking-widest text-muted-foreground text-center">
-              Verification Code
-            </p>
-            <p className="text-xl font-extrabold font-mono tracking-[0.3em] text-primary text-center">
-              {ticketId}
-            </p>
-          </div>
-
-          <p className="mt-auto pb-8 text-[11px] text-muted-foreground">
-            Tap to view ticket
-          </p>
-        </button>
-      )}
-
       {/* ─── Green app header (brand) ─── */}
       <header className="bg-primary text-primary-foreground">
         <div className="max-w-md mx-auto w-full px-4 h-14 flex items-center justify-between gap-3">
@@ -130,17 +68,17 @@ export function BetTicketDetails({ bet, open, onClose, userName }: BetTicketDeta
 
       {/* ─── Dark summary header ─── */}
       <section className="bg-[#1c1c1c] text-white relative overflow-hidden">
-        {/* Trophy watermark for won tickets — sits in the corner behind the
-            totals so the win is celebrated even after the splash dismisses. */}
+        {/* Trophy watermark for won tickets — bigger, still faded so ticket
+            content stays clearly readable behind it. */}
         {won && (
           <Image
             src="/won_trophy_image.png"
             alt=""
-            width={160}
-            height={160}
+            width={320}
+            height={320}
             priority
             aria-hidden
-            className="absolute -right-4 -top-2 w-32 h-32 sm:w-40 sm:h-40 object-contain opacity-25 pointer-events-none"
+            className="absolute -right-6 -top-4 w-56 h-56 sm:w-72 sm:h-72 object-contain opacity-30 pointer-events-none"
           />
         )}
         <div className="relative max-w-md mx-auto w-full px-4 pt-3 pb-4">
