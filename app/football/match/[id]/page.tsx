@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { ArrowLeft, Loader2, Lock } from 'lucide-react'
@@ -108,7 +109,7 @@ export default function MatchDetailPage() {
               </div>
 
               <div className="flex items-center justify-between gap-4 py-2">
-                <TeamBadge name={match.homeTeam} />
+                <TeamBadge name={match.homeTeam} flagUrl={match.homeFlagUrl} />
                 <div className="text-center">
                   {match.isLive ? (
                     <p className="text-3xl font-bold tabular-nums">
@@ -118,7 +119,7 @@ export default function MatchDetailPage() {
                     <p className="text-2xl font-bold text-muted-foreground">vs</p>
                   )}
                 </div>
-                <TeamBadge name={match.awayTeam} align="right" />
+                <TeamBadge name={match.awayTeam} flagUrl={match.awayFlagUrl} align="right" />
               </div>
 
               {closed && (
@@ -202,22 +203,36 @@ export default function MatchDetailPage() {
   )
 }
 
-function TeamBadge({ name, align }: { name: string; align?: 'right' }) {
+function TeamBadge({
+  name,
+  flagUrl,
+  align,
+}: {
+  name: string
+  flagUrl?: string
+  align?: 'right'
+}) {
+  const badge = flagUrl ? (
+    <Image
+      src={flagUrl}
+      alt=""
+      width={40}
+      height={40}
+      unoptimized
+      className="w-10 h-10 rounded-full object-cover shrink-0 bg-secondary"
+    />
+  ) : (
+    <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center text-xs font-bold shrink-0">
+      {name.substring(0, 2).toUpperCase()}
+    </div>
+  )
   return (
     <div className={`flex-1 flex items-center gap-2 min-w-0 ${align === 'right' ? 'justify-end' : ''}`}>
-      {align !== 'right' && (
-        <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center text-xs font-bold shrink-0">
-          {name.substring(0, 2).toUpperCase()}
-        </div>
-      )}
+      {align !== 'right' && badge}
       <span className={`font-semibold truncate ${align === 'right' ? 'text-right' : ''}`}>
         {name}
       </span>
-      {align === 'right' && (
-        <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center text-xs font-bold shrink-0">
-          {name.substring(0, 2).toUpperCase()}
-        </div>
-      )}
+      {align === 'right' && badge}
     </div>
   )
 }

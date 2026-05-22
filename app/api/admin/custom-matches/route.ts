@@ -19,6 +19,8 @@ interface CreatePayload {
   country?: string
   homeTeam?: string
   awayTeam?: string
+  homeFlagUrl?: string
+  awayFlagUrl?: string
   startTime?: string
   isLive?: boolean
   minute?: string
@@ -64,6 +66,9 @@ export async function POST(request: Request) {
     )
   }
 
+  const homeFlagUrl = (body.homeFlagUrl ?? '').trim() || undefined
+  const awayFlagUrl = (body.awayFlagUrl ?? '').trim() || undefined
+
   const isLive = body.isLive === true
   const match: Omit<Match, 'id' | 'custom'> & { sport: string } = {
     sport,
@@ -71,6 +76,8 @@ export async function POST(request: Request) {
     country: country || 'Custom',
     homeTeam,
     awayTeam,
+    homeFlagUrl,
+    awayFlagUrl,
     isLive,
     odds: {
       home: +home.toFixed(2),
