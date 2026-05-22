@@ -118,7 +118,7 @@ export interface Commission {
   createdAt: string
 }
 
-export const COMMISSION_RATE = 0.6 // 60% of first deposit
+export const COMMISSION_RATE = 0.6 // 60% of every deposit from a referred user
 
 export interface PlacedBet {
   id: string

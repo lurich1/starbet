@@ -123,7 +123,7 @@ export default function AdminSubAdminsPage() {
         <p className="text-sm text-muted-foreground">
           Partners self-register at{' '}
           <code className="font-mono text-xs">/sub-admin/register</code>. They earn 60% on
-          each referred user&apos;s first deposit.
+          every deposit from each referred user.
         </p>
       </div>
 

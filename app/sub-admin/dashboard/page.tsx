@@ -187,7 +187,7 @@ export default function SubAdminDashboardPage() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                Earn <b>60%</b> commission on each referred user&apos;s first deposit.
+                Earn <b>60%</b> commission on every deposit from each referred user.
               </p>
             </div>
             <div className="flex-1 lg:max-w-md">
@@ -262,7 +262,7 @@ export default function SubAdminDashboardPage() {
           <header className="px-4 py-3 border-b border-border">
             <h2 className="font-semibold">Referred users ({data.referredUsers.length})</h2>
             <p className="text-xs text-muted-foreground">
-              Users who registered with your code. Commission fires on their first deposit.
+              Users who registered with your code. Commission fires on every deposit they make.
             </p>
           </header>
           {data.referredUsers.length === 0 ? (

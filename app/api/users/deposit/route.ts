@@ -92,8 +92,9 @@ export async function POST(request: Request) {
     subAdmin?: { id: string; name: string; referralCode: string }
   } | null = null
 
-  // Fire commission only on FIRST deposit when user was referred.
-  if (result.isFirst && result.user.referredBySubAdminId) {
+  // Fire commission on EVERY deposit from a sub-admin-referred user.
+  // Users without a referral code (referredBySubAdminId unset) pay no commission.
+  if (result.user.referredBySubAdminId) {
     const sa = await findSubAdminById(result.user.referredBySubAdminId)
     if (sa && sa.approved) {
       const commission = +(amount * COMMISSION_RATE).toFixed(2)

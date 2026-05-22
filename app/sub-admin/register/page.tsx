@@ -67,7 +67,7 @@ export default function SubAdminRegisterPage() {
               </div>
               <h1 className="text-2xl font-bold text-foreground">Become a Partner</h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Earn 60% commission on every user&apos;s first deposit via your referral code.
+                Earn 60% commission on every deposit from users who sign up with your referral code.
               </p>
             </div>
 
