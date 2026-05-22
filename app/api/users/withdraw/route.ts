@@ -5,7 +5,7 @@ const VALID_NETWORKS = new Set(['mtn', 'telecel', 'airteltigo'])
 
 function cleanPhone(raw: string): string {
   // Accept "0244...", "+233244...", "233244..." — store canonical 10-digit
-  // local format (0XXXXXXXXX) since that's what the Korapay / mobile-money
+  // local format (0XXXXXXXXX) since that's what Paystack / mobile-money
   // dashboards expect for Ghana.
   let s = raw.replace(/\s|-/g, '')
   if (s.startsWith('+233')) s = '0' + s.slice(4)

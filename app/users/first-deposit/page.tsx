@@ -11,9 +11,9 @@ import { Input } from '@/components/ui/input'
 import { saveUserSession } from '@/lib/user-session'
 import { formatMoney } from '@/lib/format-money'
 
-import { KORAPAY_SDK_SRC, type KorapaySuccess } from '@/lib/korapay-client'
+import { PAYSTACK_SDK_SRC, ghsToPesewas } from '@/lib/paystack-client'
 
-const KORAPAY_PUBLIC_KEY = process.env.NEXT_PUBLIC_KORAPAY_PUBLIC_KEY ?? ''
+const PAYSTACK_PUBLIC_KEY = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY ?? ''
 const MIN_FIRST_DEPOSIT = 200
 
 interface UserProfile {
@@ -51,8 +51,8 @@ function DepositForm() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [profileLoading, setProfileLoading] = useState(Boolean(userId))
   const [sdkReady, setSdkReady] = useState(false)
-  // Track Korapay references we've already submitted, so a double-fire of
-  // onSuccess (Korapay quirk / React strict mode / user double-tap) doesn't
+  // Track Paystack references we've already submitted, so a double-fire of
+  // the success callback (React strict mode / user double-tap) doesn't
   // credit the same deposit twice.
   const submittedRefs = useRef<Set<string>>(new Set())
 
@@ -125,11 +125,11 @@ function DepositForm() {
       setError('Profile not loaded yet — wait a moment and try again.')
       return
     }
-    if (!KORAPAY_PUBLIC_KEY) {
-      setError('Payment not configured (missing NEXT_PUBLIC_KORAPAY_PUBLIC_KEY).')
+    if (!PAYSTACK_PUBLIC_KEY) {
+      setError('Payment not configured (missing NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY).')
       return
     }
-    if (!window.Korapay) {
+    if (!window.PaystackPop) {
       setError('Payment library still loading — try again in a second.')
       return
     }
@@ -137,38 +137,37 @@ function DepositForm() {
     setLoading(true)
     const reference = `PB-${profile.id.slice(0, 8)}-${Date.now()}`
 
-    window.Korapay.initialize({
-      key: KORAPAY_PUBLIC_KEY,
-      reference,
-      amount: amt,
+    const handler = window.PaystackPop.setup({
+      key: PAYSTACK_PUBLIC_KEY,
+      email: profile.email || `${profile.id}@primebet.local`,
+      amount: ghsToPesewas(amt),
       currency: 'GHS',
-      customer: {
-        name: profile.name || 'Player',
-        email: profile.email || `${profile.id}@primebet.local`,
+      ref: reference,
+      metadata: { userId: profile.id, name: profile.name || 'Player' },
+      callback: (response) => {
+        // Paystack runs this synchronously after the iframe closes — fire
+        // the async server credit and let creditOnServer dedup any retries.
+        void (async () => {
+          try {
+            await creditOnServer(response.reference || reference, amt)
+          } catch (err) {
+            setError(err instanceof Error ? err.message : String(err))
+          } finally {
+            setLoading(false)
+          }
+        })()
       },
       onClose: () => {
         setLoading(false)
       },
-      onSuccess: async (data) => {
-        try {
-          await creditOnServer(data.reference || reference, amt)
-        } catch (err) {
-          setError(err instanceof Error ? err.message : String(err))
-        } finally {
-          setLoading(false)
-        }
-      },
-      onFailed: (data) => {
-        setError(data?.reason ?? 'Payment failed.')
-        setLoading(false)
-      },
     })
+    handler.openIframe()
   }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Script
-        src={KORAPAY_SDK_SRC}
+        src={PAYSTACK_SDK_SRC}
         strategy="afterInteractive"
         onLoad={() => setSdkReady(true)}
       />
@@ -265,8 +264,8 @@ function DepositForm() {
                   <h1 className="text-2xl font-bold text-foreground">{headingTitle}</h1>
                   <p className="text-sm text-muted-foreground mt-1">
                     {isReturning
-                      ? 'Pay securely with Korapay.'
-                      : `Pay securely with Korapay. Minimum first deposit: GHS ${MIN_FIRST_DEPOSIT}.`}
+                      ? 'Pay securely with Paystack.'
+                      : `Pay securely with Paystack. Minimum first deposit: GHS ${MIN_FIRST_DEPOSIT}.`}
                   </p>
                 </div>
 
@@ -333,7 +332,7 @@ function DepositForm() {
                   </Button>
 
                   <p className="text-center text-[11px] text-muted-foreground">
-                    Secured by Korapay · You can deposit later from your account
+                    Secured by Paystack · You can deposit later from your account
                   </p>
                 </form>
               </>

@@ -1,13 +1,15 @@
-// Server-side Korapay helpers. Never import in client code — the secret key
-// would leak into the bundle. For the browser, use NEXT_PUBLIC_KORAPAY_PUBLIC_KEY.
+// Server-side Paystack helpers. Never import in client code — the secret
+// key would leak into the bundle. For the browser, use
+// NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY.
 
-const KORAPAY_API_BASE = 'https://api.korapay.com/merchant/api/v1'
+const PAYSTACK_API_BASE = 'https://api.paystack.co'
 
-export interface KorapayCharge {
+export interface PaystackTransaction {
   reference: string
+  /** Amount Paystack received, in the smallest currency unit (pesewas). */
   amount: number
   currency: string
-  status: 'success' | 'processing' | 'failed' | 'pending' | string
+  status: 'success' | 'failed' | 'abandoned' | 'pending' | 'reversed' | string
   customer?: { email?: string; name?: string }
   metadata?: Record<string, unknown>
 }
@@ -15,6 +17,7 @@ export interface KorapayCharge {
 export interface VerifyResult {
   ok: boolean
   status?: string
+  /** Amount in the major unit (GHS), converted from pesewas Paystack returns. */
   amount?: number
   currency?: string
   reference?: string
@@ -23,14 +26,14 @@ export interface VerifyResult {
 }
 
 /**
- * Verify a Korapay transaction by reference using the secret key.
+ * Verify a Paystack transaction by reference using the secret key.
  * Always do this server-side before crediting a user — never trust the
- * inline checkout's onSuccess callback by itself.
+ * inline checkout's success callback by itself.
  */
-export async function verifyKorapayCharge(reference: string): Promise<VerifyResult> {
-  const secret = process.env.KORAPAY_SECRET_KEY
+export async function verifyPaystackCharge(reference: string): Promise<VerifyResult> {
+  const secret = process.env.PAYSTACK_SECRET_KEY
   if (!secret) {
-    return { ok: false, error: 'KORAPAY_SECRET_KEY not configured' }
+    return { ok: false, error: 'PAYSTACK_SECRET_KEY not configured' }
   }
   if (!reference) {
     return { ok: false, error: 'reference required' }
@@ -38,7 +41,7 @@ export async function verifyKorapayCharge(reference: string): Promise<VerifyResu
 
   try {
     const res = await fetch(
-      `${KORAPAY_API_BASE}/charges/${encodeURIComponent(reference)}`,
+      `${PAYSTACK_API_BASE}/transaction/verify/${encodeURIComponent(reference)}`,
       {
         method: 'GET',
         headers: {
@@ -51,7 +54,7 @@ export async function verifyKorapayCharge(reference: string): Promise<VerifyResu
     const json = (await res.json().catch(() => ({}))) as {
       status?: boolean
       message?: string
-      data?: KorapayCharge
+      data?: PaystackTransaction
     }
     if (!res.ok || !json.status || !json.data) {
       return { ok: false, error: json.message ?? `HTTP ${res.status}` }
@@ -60,7 +63,9 @@ export async function verifyKorapayCharge(reference: string): Promise<VerifyResu
     return {
       ok: data.status === 'success',
       status: data.status,
-      amount: data.amount,
+      // Paystack returns pesewas — convert to major unit so the caller
+      // can compare against the GHS amount it expected.
+      amount: typeof data.amount === 'number' ? data.amount / 100 : undefined,
       currency: data.currency,
       reference: data.reference,
       metadata: data.metadata,

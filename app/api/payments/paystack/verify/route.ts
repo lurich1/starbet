@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { verifyKorapayCharge } from '@/lib/korapay'
+import { verifyPaystackCharge } from '@/lib/paystack'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'reference required' }, { status: 400 })
   }
 
-  const result = await verifyKorapayCharge(reference)
+  const result = await verifyPaystackCharge(reference)
   if (!result.ok) {
     return NextResponse.json(
       { verified: false, error: result.error ?? 'verification failed', status: result.status },

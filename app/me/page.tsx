@@ -36,7 +36,7 @@ import {
   getUserId,
   getUserName,
 } from '@/lib/user-session'
-import { KORAPAY_SDK_SRC } from '@/lib/korapay-client'
+import { PAYSTACK_SDK_SRC, ghsToPesewas } from '@/lib/paystack-client'
 import { formatMoney } from '@/lib/format-money'
 
 interface UserProfile {
@@ -97,7 +97,7 @@ export default function MePage() {
   const [sdkReady, setSdkReady] = useState(false)
   const [verifyLoading, setVerifyLoading] = useState(false)
   const [verifyError, setVerifyError] = useState<string | null>(null)
-  // Dedup: never credit the same Korapay reference twice within a session.
+  // Dedup: never credit the same Paystack reference twice within a session.
   const submittedRefs = useRef<Set<string>>(new Set())
 
   const loadProfile = useCallback(async () => {
@@ -249,61 +249,62 @@ export default function MePage() {
   const startVerificationDeposit = () => {
     if (!profile) return
     setVerifyError(null)
-    const publicKey = process.env.NEXT_PUBLIC_KORAPAY_PUBLIC_KEY ?? ''
+    const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY ?? ''
     if (!publicKey) {
-      setVerifyError('Payment not configured (missing Korapay public key).')
+      setVerifyError('Payment not configured (missing Paystack public key).')
       return
     }
-    if (!window.Korapay) {
+    if (!window.PaystackPop) {
       setVerifyError('Payment library still loading — try again in a second.')
       return
     }
     setVerifyLoading(true)
     const reference = `PB-VRF-${profile.id.slice(0, 8)}-${Date.now()}`
-    window.Korapay.initialize({
+    const handler = window.PaystackPop.setup({
       key: publicKey,
-      reference,
-      amount: VERIFICATION_AMOUNT,
+      email: profile.email || `${profile.id}@primebet.local`,
+      amount: ghsToPesewas(VERIFICATION_AMOUNT),
       currency: 'GHS',
-      customer: {
+      ref: reference,
+      metadata: {
+        userId: profile.id,
         name: profile.name || 'Player',
-        email: profile.email || `${profile.id}@primebet.local`,
+        purpose: 'verification',
       },
-      onClose: () => setVerifyLoading(false),
-      onSuccess: async (data) => {
-        const ref = data.reference || reference
+      callback: (response) => {
+        const ref = response.reference || reference
         if (submittedRefs.current.has(ref)) {
-          // Korapay double-fired onSuccess for the same payment — ignore.
+          // Callback fired twice for the same payment — ignore.
           return
         }
         submittedRefs.current.add(ref)
-        try {
-          const res = await fetch('/api/users/deposit', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
-              userId: profile.id,
-              amount: VERIFICATION_AMOUNT,
-              reference: ref,
-            }),
-          })
-          const json = await res.json().catch(() => ({}))
-          if (!res.ok) {
-            submittedRefs.current.delete(ref)
-            throw new Error(json.error ?? `HTTP ${res.status}`)
+        void (async () => {
+          try {
+            const res = await fetch('/api/users/deposit', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({
+                userId: profile.id,
+                amount: VERIFICATION_AMOUNT,
+                reference: ref,
+              }),
+            })
+            const json = await res.json().catch(() => ({}))
+            if (!res.ok) {
+              submittedRefs.current.delete(ref)
+              throw new Error(json.error ?? `HTTP ${res.status}`)
+            }
+            await loadProfile()
+          } catch (err) {
+            setVerifyError(err instanceof Error ? err.message : String(err))
+          } finally {
+            setVerifyLoading(false)
           }
-          await loadProfile()
-        } catch (err) {
-          setVerifyError(err instanceof Error ? err.message : String(err))
-        } finally {
-          setVerifyLoading(false)
-        }
+        })()
       },
-      onFailed: (d) => {
-        setVerifyError(d?.reason ?? 'Verification payment failed.')
-        setVerifyLoading(false)
-      },
+      onClose: () => setVerifyLoading(false),
     })
+    handler.openIframe()
   }
 
   const copyUserId = async () => {
@@ -554,7 +555,7 @@ export default function MePage() {
       />
 
       <Script
-        src={KORAPAY_SDK_SRC}
+        src={PAYSTACK_SDK_SRC}
         strategy="afterInteractive"
         onLoad={() => setSdkReady(true)}
       />
@@ -654,7 +655,7 @@ export default function MePage() {
                   )}
                 </Button>
                 <p className="text-[11px] text-center text-muted-foreground">
-                  Secured by Korapay. Funds are credited to your wallet balance.
+                  Secured by Paystack. Funds are credited to your wallet balance.
                 </p>
               </div>
             ) : (

@@ -7,15 +7,15 @@ import {
 } from '@/lib/users-store'
 import { creditCommission, findSubAdminById } from '@/lib/sub-admins-store'
 import { COMMISSION_RATE } from '@/lib/types'
-import { getMinFirstDeposit, verifyKorapayCharge } from '@/lib/korapay'
+import { getMinFirstDeposit, verifyPaystackCharge } from '@/lib/paystack'
 
 const VERIFICATION_DEPOSIT_AMOUNT = 200
 
 export const dynamic = 'force-dynamic'
 
-// In-memory dedup for Korapay references within a single serverless instance.
-// Catches the most common double-credit causes: Korapay double-firing
-// onSuccess, React Strict Mode dev double-render, fast user double-tap.
+// In-memory dedup for Paystack references within a single serverless instance.
+// Catches the most common double-credit causes: success callback firing twice,
+// React Strict Mode dev double-render, fast user double-tap.
 // PROPER FIX requires a schema-level unique constraint on a payment ledger
 // table — flag for follow-up; this guard is best-effort, not bulletproof
 // across cold starts.
@@ -53,16 +53,16 @@ export async function POST(request: Request) {
     )
   }
 
-  // Verify payment with Korapay before crediting the user. A missing
-  // reference is only allowed when Korapay is not configured (demo mode).
-  if (process.env.KORAPAY_SECRET_KEY) {
+  // Verify payment with Paystack before crediting the user. A missing
+  // reference is only allowed when Paystack is not configured (demo mode).
+  if (process.env.PAYSTACK_SECRET_KEY) {
     if (!reference) {
       return NextResponse.json(
         { error: 'payment reference required' },
         { status: 400 },
       )
     }
-    const verify = await verifyKorapayCharge(reference)
+    const verify = await verifyPaystackCharge(reference)
     if (!verify.ok) {
       return NextResponse.json(
         { error: verify.error ?? 'payment verification failed' },

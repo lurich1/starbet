@@ -161,7 +161,7 @@ export async function recordWithdrawal(
 
 /**
  * Bump the user's withdrawal-verification step by 1 (capped at 2).
- * Called after each verification-tier Korapay deposit clears.
+ * Called after each verification-tier Paystack deposit clears.
  */
 export async function advanceVerificationStep(userId: string): Promise<AppUser | null> {
   const current = await findUserById(userId)
