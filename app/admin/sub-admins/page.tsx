@@ -26,8 +26,19 @@ interface SubAdminRow {
   commissionsCount: number
 }
 
+interface PlatformTotals {
+  referredDeposits: number
+  subAdminShare: number
+  adminShare: number
+}
+
 export default function AdminSubAdminsPage() {
   const [rows, setRows] = useState<SubAdminRow[]>([])
+  const [platform, setPlatform] = useState<PlatformTotals>({
+    referredDeposits: 0,
+    subAdminShare: 0,
+    adminShare: 0,
+  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -38,8 +49,12 @@ export default function AdminSubAdminsPage() {
     try {
       const res = await fetch('/api/admin/sub-admins', { cache: 'no-store' })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = (await res.json()) as { subAdmins: SubAdminRow[] }
+      const data = (await res.json()) as {
+        subAdmins: SubAdminRow[]
+        platform?: PlatformTotals
+      }
       setRows(data.subAdmins)
+      if (data.platform) setPlatform(data.platform)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -156,12 +171,31 @@ export default function AdminSubAdminsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <Tile label="Partners" value={rows.length.toString()} />
         <Tile label="Approved" value={rows.filter((r) => r.approved).length.toString()} />
         <Tile label="Referred users" value={totals.referrals.toString()} />
-        <Tile label="Outstanding (GHS)" value={totals.outstanding.toFixed(2)} highlight />
-        <Tile label="All-time paid (GHS)" value={totals.paid.toFixed(2)} />
+      </div>
+
+      {/* Money split — every referred-user deposit splits 60/40 */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Tile
+          label="Referred deposits (GHS)"
+          value={platform.referredDeposits.toFixed(2)}
+        />
+        <Tile
+          label="Sub-admin share 60% (GHS)"
+          value={platform.subAdminShare.toFixed(2)}
+        />
+        <Tile
+          label="Admin share 40% (GHS)"
+          value={platform.adminShare.toFixed(2)}
+          highlight
+        />
+        <Tile
+          label="Outstanding payouts (GHS)"
+          value={totals.outstanding.toFixed(2)}
+        />
       </div>
 
       <div className="flex gap-3">
