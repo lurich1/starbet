@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getMatchesForSport, supportedSports } from '@/lib/api/odds'
 import { readCustomMatchesForSport } from '@/lib/custom-matches-store'
+import { readMatchOverridesMap, type MatchOverride } from '@/lib/match-overrides-store'
 import { deriveMarketBook } from '@/lib/markets'
 import type { Match } from '@/lib/types'
 
@@ -14,8 +15,23 @@ function withDerivedMarkets(m: Match): Match {
   return derived ? { ...m, markets: derived } : m
 }
 
-function hydrateAll(list: Match[]): Match[] {
-  return list.map(withDerivedMarkets)
+/**
+ * Overlay an admin override on top of a match. Only fields the admin
+ * explicitly set are applied; everything else stays from the source.
+ */
+function applyOverride(m: Match, o: MatchOverride | undefined): Match {
+  if (!o) return m
+  const next: Match = { ...m }
+  if (o.homeScore !== null && o.homeScore !== undefined) next.homeScore = o.homeScore
+  if (o.awayScore !== null && o.awayScore !== undefined) next.awayScore = o.awayScore
+  if (o.minute !== null && o.minute !== undefined) next.minute = o.minute
+  if (o.isLive !== null && o.isLive !== undefined) next.isLive = o.isLive
+  if (o.locked) next.locked = true
+  return next
+}
+
+function hydrateAll(list: Match[], overrides: Map<string, MatchOverride>): Match[] {
+  return list.map((m) => withDerivedMarkets(applyOverride(m, overrides.get(m.id))))
 }
 
 function isToday(iso: string | undefined, tzOffsetMinutes: number): boolean {
@@ -49,11 +65,21 @@ export async function GET(request: Request) {
     )
   }
 
+  // Pull admin overrides up front; one map applies to both custom + API matches.
+  // If the table doesn't exist yet (migration not run) we fall back to empty.
+  let overrides: Map<string, MatchOverride>
+  try {
+    overrides = await readMatchOverridesMap()
+  } catch {
+    overrides = new Map()
+  }
+
   // Hide finished custom matches from the public feed. A finished match
   // has minute === 'FT' (set by the admin "Final result" button).
   const allCustom = await readCustomMatchesForSport(sport)
   const customMatches = hydrateAll(
     allCustom.filter((m) => m.minute !== 'FT'),
+    overrides,
   )
   const maybeFilter = (list: Match[]) => (todayOnly ? filterToday(list, tzOffset) : list)
 
@@ -62,7 +88,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       source: customMatches.length > 0 ? 'mixed' : 'odds-api',
       reason: apiMatches.length === 0 ? 'no upcoming events from provider' : undefined,
-      matches: maybeFilter([...customMatches, ...hydrateAll(apiMatches)]),
+      matches: maybeFilter([...customMatches, ...hydrateAll(apiMatches, overrides)]),
       customCount: customMatches.length,
     })
   } catch (err) {
