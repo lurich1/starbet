@@ -142,11 +142,13 @@ function MatchRow({
   const closedLabel =
     betting.reason === 'finished'
       ? 'FINISHED'
-      : betting.reason === 'ending-soon'
-        ? 'CLOSING'
-        : betting.reason === 'starting-soon' || betting.reason === 'started'
+      : betting.reason === 'started'
+        ? 'LIVE — LOCKED'
+        : betting.reason === 'starting-soon'
           ? 'CLOSED'
-          : null
+          : betting.reason === 'admin-locked'
+            ? 'LOCKED'
+            : null
 
   const hasMarkets = !!match.markets
 

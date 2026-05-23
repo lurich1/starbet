@@ -72,7 +72,7 @@ export function minutesUntilEnd(match: Match): number | null {
 
 export interface BettingState {
   closed: boolean
-  reason: 'starting-soon' | 'ending-soon' | 'started' | 'finished' | null
+  reason: 'starting-soon' | 'started' | 'finished' | 'admin-locked' | null
   /** Minutes remaining until the cutoff event (start or end). 0 = already cut off. */
   minutesRemaining: number | null
 }
@@ -80,23 +80,26 @@ export interface BettingState {
 /**
  * Decide whether to accept new bets on a given match.
  * Rules:
- *   • Upcoming match within BETTING_CUTOFF_MINUTES of its start time → closed (starting-soon).
- *   • Live match within BETTING_CUTOFF_MINUTES of its regulation end → closed (ending-soon).
- *   • Live match whose elapsed minute exceeds regulation → closed (finished).
+ *   • Admin manually locked it (custom matches only) → closed.
+ *   • Match is live → closed (no in-play betting; lock stays until match
+ *     finishes and the admin sets isLive=false).
+ *   • Upcoming match within BETTING_CUTOFF_MINUTES of its start time → closed.
+ *   • Match's start time has passed but isLive isn't flipped yet → closed
+ *     (started — admin still has to mark it live or final).
  */
 export function getBettingState(match: Match, now: Date = new Date()): BettingState {
+  if (match.locked) {
+    return { closed: true, reason: 'admin-locked', minutesRemaining: 0 }
+  }
+
   if (match.isLive) {
+    // Any live match is locked. If the elapsed minute already exceeds the
+    // regulation length we report it as finished; otherwise it's mid-game.
     const left = minutesUntilEnd(match)
-    if (left === null) {
-      return { closed: false, reason: null, minutesRemaining: null }
-    }
-    if (left <= 0) {
+    if (left !== null && left <= 0) {
       return { closed: true, reason: 'finished', minutesRemaining: 0 }
     }
-    if (left <= BETTING_CUTOFF_MINUTES) {
-      return { closed: true, reason: 'ending-soon', minutesRemaining: left }
-    }
-    return { closed: false, reason: null, minutesRemaining: left }
+    return { closed: true, reason: 'started', minutesRemaining: left }
   }
 
   const untilStart = minutesUntilStart(match.startTime, now)

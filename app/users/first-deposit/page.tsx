@@ -81,7 +81,7 @@ function DepositForm() {
 
   const isReturning = Boolean(profile?.firstDepositAt)
   const headingTitle = isReturning ? 'Add funds to your wallet' : 'Make your first deposit'
-  const minAmount = isReturning ? 1 : MIN_FIRST_DEPOSIT
+  const minAmount = MIN_FIRST_DEPOSIT
 
   const creditOnServer = useCallback(
     async (reference: string, amt: number) => {
@@ -263,9 +263,7 @@ function DepositForm() {
                   </div>
                   <h1 className="text-2xl font-bold text-foreground">{headingTitle}</h1>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {isReturning
-                      ? 'Pay securely with Paystack.'
-                      : `Pay securely with Paystack. Minimum first deposit: GHS ${MIN_FIRST_DEPOSIT}.`}
+                    Pay securely with Paystack. Minimum deposit: GHS {MIN_FIRST_DEPOSIT}.
                   </p>
                 </div>
 
@@ -287,7 +285,7 @@ function DepositForm() {
                   </div>
 
                   <div className="flex gap-2 flex-wrap">
-                    {(isReturning ? ['50', '100', '200', '500'] : ['200', '300', '500', '1000']).map(
+                    {['200', '300', '500', '1000'].map(
                       (preset) => (
                         <button
                           key={preset}

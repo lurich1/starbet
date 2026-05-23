@@ -26,12 +26,12 @@ export function MatchCard({ match, selections, onToggleSelection }: MatchCardPro
   const closedLabel =
     betting.reason === 'finished'
       ? 'FINISHED'
-      : betting.reason === 'ending-soon'
-        ? 'CLOSING'
-        : betting.reason === 'starting-soon'
-          ? 'CLOSED'
-          : betting.reason === 'started'
-            ? 'STARTED'
+      : betting.reason === 'starting-soon'
+        ? 'CLOSED'
+        : betting.reason === 'started'
+          ? 'LIVE — LOCKED'
+          : betting.reason === 'admin-locked'
+            ? 'LOCKED'
             : null
 
   const hasMarkets = !!match.markets
@@ -155,11 +155,11 @@ export function MatchCard({ match, selections, onToggleSelection }: MatchCardPro
         {betting.closed && (
           <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
             <Lock className="w-3 h-3" />
-            {betting.reason === 'ending-soon' && 'Betting suspended — match ending soon.'}
             {betting.reason === 'finished' && 'Match finished — betting closed.'}
             {betting.reason === 'starting-soon' &&
               `Betting closed — kick-off in ${betting.minutesRemaining ?? 0} min.`}
             {betting.reason === 'started' && 'Match has started — betting closed.'}
+            {betting.reason === 'admin-locked' && 'Betting closed by admin.'}
           </p>
         )}
 

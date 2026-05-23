@@ -43,12 +43,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'user not found' }, { status: 404 })
   }
 
-  // Enforce minimum first deposit (configurable via MIN_FIRST_DEPOSIT, default 200)
+  // Enforce minimum deposit on EVERY deposit (configurable via MIN_FIRST_DEPOSIT, default 200).
   const isFirstDeposit = !existing.firstDepositAt
-  const minFirst = getMinFirstDeposit()
-  if (isFirstDeposit && amount < minFirst) {
+  const minDeposit = getMinFirstDeposit()
+  if (amount < minDeposit) {
     return NextResponse.json(
-      { error: `minimum first deposit is GHS ${minFirst.toFixed(2)}` },
+      { error: `minimum deposit is GHS ${minDeposit.toFixed(2)}` },
       { status: 400 },
     )
   }

@@ -17,6 +17,7 @@ interface CustomMatchRow {
   start_time: string | null
   start_time_utc: string | null
   is_live: boolean
+  locked: boolean
   odds_home: number
   odds_draw: number
   odds_away: number
@@ -111,6 +112,7 @@ function rowToMatch(row: CustomMatchRow): Match {
     startTime: row.start_time ?? undefined,
     startTimeISO: row.start_time_utc ?? undefined,
     isLive: row.is_live,
+    locked: row.locked ?? false,
     odds: {
       home: Number(row.odds_home),
       draw: Number(row.odds_draw),
@@ -141,6 +143,7 @@ function matchToRow(input: Omit<Match, 'id' | 'custom'> & { sport: string }) {
     start_time: input.startTime ?? null,
     start_time_utc: input.startTimeISO ?? null,
     is_live: input.isLive,
+    locked: input.locked ?? false,
     odds_home: input.odds.home,
     odds_draw: input.odds.draw,
     odds_away: input.odds.away,
@@ -204,6 +207,7 @@ export async function updateCustomMatch(
   if (patch.startTime !== undefined) dbPatch.start_time = patch.startTime
   if (patch.startTimeISO !== undefined) dbPatch.start_time_utc = patch.startTimeISO
   if (patch.isLive !== undefined) dbPatch.is_live = patch.isLive
+  if (patch.locked !== undefined) dbPatch.locked = patch.locked
   if (patch.sport !== undefined) dbPatch.sport = patch.sport
   if (patch.odds) {
     dbPatch.odds_home = patch.odds.home

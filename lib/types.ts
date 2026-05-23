@@ -22,6 +22,8 @@ export interface Match {
   /** Public image URLs for team flags / crests, set by admin on custom matches. */
   homeFlagUrl?: string
   awayFlagUrl?: string
+  /** Admin manual lock — when true, no new bets are accepted regardless of isLive / startTime. */
+  locked?: boolean
 }
 
 export interface OverUnderLine {

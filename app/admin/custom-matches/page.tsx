@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, Trash2, Loader2, CircleAlert, CheckCircle2, Upload, X } from 'lucide-react'
+import { Plus, Trash2, Loader2, CircleAlert, CheckCircle2, Upload, X, Lock, Unlock } from 'lucide-react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -599,6 +599,12 @@ function ExistingMatchRow({ match, busy, onDelete, onPatch }: ExistingMatchRowPr
             <span className="truncate">{match.awayTeam}</span>
           </p>
           <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-1 flex-wrap">
+            {match.locked && (
+              <span className="font-semibold text-destructive flex items-center gap-1">
+                <Lock className="w-3 h-3" />
+                LOCKED
+              </span>
+            )}
             {match.isLive ? (
               <span className="text-live font-semibold flex items-center gap-1">
                 <span className="w-1.5 h-1.5 bg-live rounded-full animate-pulse-live" />
@@ -625,6 +631,32 @@ function ExistingMatchRow({ match, busy, onDelete, onPatch }: ExistingMatchRowPr
           </div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
+          {!editing && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onPatch({ locked: !match.locked })}
+              disabled={busy}
+              className={`h-8 text-xs gap-1 ${
+                match.locked
+                  ? 'text-destructive border-destructive/40 hover:bg-destructive/10'
+                  : ''
+              }`}
+              title={match.locked ? 'Unlock betting' : 'Lock betting'}
+            >
+              {match.locked ? (
+                <>
+                  <Lock className="w-3 h-3" />
+                  <span className="hidden sm:inline">Locked</span>
+                </>
+              ) : (
+                <>
+                  <Unlock className="w-3 h-3" />
+                  <span className="hidden sm:inline">Lock</span>
+                </>
+              )}
+            </Button>
+          )}
           {!editing && (
             <Button
               size="sm"

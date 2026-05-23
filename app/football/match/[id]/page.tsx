@@ -126,12 +126,12 @@ export default function MatchDetailPage() {
                 <div className="mt-3 p-2 rounded-md bg-destructive/10 text-destructive text-xs flex items-center gap-1.5">
                   <Lock className="w-3 h-3" />
                   Betting closed —{' '}
-                  {betting.reason === 'ending-soon'
-                    ? 'match ending soon.'
-                    : betting.reason === 'finished'
-                      ? 'match finished.'
-                      : betting.reason === 'starting-soon'
-                        ? `kick-off in ${betting.minutesRemaining ?? 0} min.`
+                  {betting.reason === 'finished'
+                    ? 'match finished.'
+                    : betting.reason === 'starting-soon'
+                      ? `kick-off in ${betting.minutesRemaining ?? 0} min.`
+                      : betting.reason === 'admin-locked'
+                        ? 'locked by admin.'
                         : 'match has started.'}
                 </div>
               )}
