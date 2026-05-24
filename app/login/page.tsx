@@ -160,7 +160,12 @@ export default function LoginPage() {
 
           <p className="text-center mt-6 text-sm text-muted-foreground">
             Need help?{' '}
-            <Link href="#" className="text-primary hover:underline">
+            <Link
+              href="https://t.me/primebet"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
               Contact Support
             </Link>
           </p>

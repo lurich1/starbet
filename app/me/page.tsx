@@ -75,7 +75,7 @@ const QUICK_LINKS = [
 const MENU_ITEMS = [
   { label: 'My SportySocial', icon: Users, href: '#' },
   { label: 'Daily Streak', icon: Flame, href: '#', badge: '2' },
-  { label: 'Customer Service', icon: MessageCircle, href: '#' },
+  { label: 'Customer Service', icon: MessageCircle, href: 'https://t.me/primebet', external: true },
   { label: 'How to Play', icon: HelpCircle, href: '#' },
   { label: 'Settings', icon: Settings, href: '#' },
 ] as const
@@ -509,6 +509,8 @@ export default function MePage() {
                 <li key={item.label}>
                   <Link
                     href={item.href}
+                    target={'external' in item && item.external ? '_blank' : undefined}
+                    rel={'external' in item && item.external ? 'noopener noreferrer' : undefined}
                     className="flex items-center gap-4 px-4 py-3.5 hover:bg-secondary/40 transition-colors"
                   >
                     <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center shrink-0">
