@@ -521,12 +521,9 @@ function SourceBadge({
       </span>
     )
   }
-  // Anything that isn't an admin credit is a gateway top-up. The actual
-  // provider on the row may be 'paystack' (legacy) or 'moolre' — we don't
-  // surface that here; the active gateway is Moolre.
   return (
     <span className="px-1.5 py-0.5 rounded border text-[10px] font-bold uppercase border-border text-muted-foreground">
-      {provider === 'moolre' || provider === 'paystack' ? 'Moolre' : provider}
+      {provider}
     </span>
   )
 }
