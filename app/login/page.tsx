@@ -13,7 +13,7 @@ import { SUPPORT_TELEGRAM_URL } from '@/lib/support'
 export default function LoginPage() {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -26,7 +26,7 @@ export default function LoginPage() {
       const res = await fetch('/api/users/login', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify({ identifier: identifier.trim(), password }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`)
@@ -72,17 +72,18 @@ export default function LoginPage() {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium text-foreground">
-                  Email
+                <label htmlFor="identifier" className="text-sm font-medium text-foreground">
+                  Email or phone number
                 </label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="identifier"
+                  type="text"
+                  inputMode="email"
+                  placeholder="you@example.com or 0244XXXXXXX"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
                   className="h-12 bg-input border-border"
-                  autoComplete="email"
+                  autoComplete="username"
                   required
                 />
               </div>

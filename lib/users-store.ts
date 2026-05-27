@@ -71,6 +71,18 @@ export async function findUserByEmail(email: string): Promise<AppUser | null> {
   return data ? rowToUser(data) : null
 }
 
+export async function findUserByPhone(phone: string): Promise<AppUser | null> {
+  const cleaned = phone.trim()
+  if (!cleaned) return null
+  const { data, error } = await supabaseServer()
+    .from('users')
+    .select('*')
+    .eq('phone', cleaned)
+    .maybeSingle()
+  if (error) throw new Error(`users.findByPhone: ${error.message}`)
+  return data ? rowToUser(data) : null
+}
+
 export async function findUserById(id: string): Promise<AppUser | null> {
   const { data, error } = await supabaseServer()
     .from('users')
