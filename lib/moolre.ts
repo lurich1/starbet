@@ -82,19 +82,38 @@ export async function startMoolrePayment(
       }),
       cache: 'no-store',
     })
-    const json = (await res.json().catch(() => ({}))) as {
+    const raw = await res.text()
+    let json: {
       status?: number | boolean
       message?: string
       data?: { authorization_url?: string }
+    } = {}
+    try {
+      json = raw ? JSON.parse(raw) : {}
+    } catch {
+      // Non-JSON response (HTML error page, etc.) — fall through.
     }
-    if (!res.ok) {
-      return { ok: false, error: json.message ?? `HTTP ${res.status}` }
+    if (!res.ok || !json.data?.authorization_url) {
+      // Log the full Moolre response server-side so we can see exactly
+      // what they rejected — the client only gets the short error.
+      console.error('[moolre.start] failed', {
+        httpStatus: res.status,
+        moolreStatus: json.status,
+        moolreMessage: json.message,
+        accountnumberLen: cfg.account.length,
+        pubKeyPrefix: cfg.pubKey.slice(0, 8),
+        rawSnippet: raw.slice(0, 300),
+      })
+      return {
+        ok: false,
+        error:
+          json.message ??
+          (json.data?.authorization_url
+            ? `HTTP ${res.status}`
+            : 'no authorization_url in response'),
+      }
     }
-    const url = json.data?.authorization_url
-    if (!url) {
-      return { ok: false, error: json.message ?? 'no authorization_url in response' }
-    }
-    return { ok: true, url }
+    return { ok: true, url: json.data.authorization_url }
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) }
   }
@@ -126,7 +145,8 @@ export async function verifyMoolrePayment(
       }),
       cache: 'no-store',
     })
-    const json = (await res.json().catch(() => ({}))) as {
+    const raw = await res.text()
+    let json: {
       status?: number | boolean
       message?: string
       data?: {
@@ -135,8 +155,20 @@ export async function verifyMoolrePayment(
         currency?: string
         reference?: string
       }
+    } = {}
+    try {
+      json = raw ? JSON.parse(raw) : {}
+    } catch {
+      // ignore non-JSON
     }
     if (!res.ok || !json.data) {
+      console.error('[moolre.verify] failed', {
+        httpStatus: res.status,
+        moolreStatus: json.status,
+        moolreMessage: json.message,
+        reference,
+        rawSnippet: raw.slice(0, 300),
+      })
       return { ok: false, error: json.message ?? `HTTP ${res.status}` }
     }
     const data = json.data
