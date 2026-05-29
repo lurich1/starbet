@@ -116,24 +116,28 @@ function RegisterForm() {
       </header>
 
       <main className="flex-1 flex items-center justify-center p-4 py-8">
-        <div className="w-full max-w-md">
-          <div className="bg-card rounded-2xl border border-border p-6 sm:p-8">
+        <div className="relative w-full max-w-md">
+          {/* Ambient glows match the login + balance card visual language */}
+          <div aria-hidden className="absolute -top-16 -left-12 w-56 h-56 rounded-full bg-primary/20 blur-3xl pointer-events-none" />
+          <div aria-hidden className="absolute -bottom-16 -right-12 w-56 h-56 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+
+          <div className="relative bg-card rounded-2xl border border-border p-6 sm:p-8 shadow-card">
             <div className="text-center mb-6">
-              <h1 className="text-2xl font-bold text-foreground mb-2">Create Account</h1>
+              <h1 className="text-title font-bold text-foreground mb-1.5 tracking-tight">Create account</h1>
               <p className="text-muted-foreground text-sm">
                 Join Prime Bet and start winning today
               </p>
             </div>
 
             {referralCode && (
-              <div className="bg-primary/10 border border-primary/20 rounded-xl p-3 mb-5 flex items-center gap-3">
-                <Gift className="w-5 h-5 text-primary shrink-0" />
+              <div className="bg-primary/10 border border-primary/30 rounded-xl p-3 mb-5 flex items-center gap-3 shadow-card">
+                <span className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+                  <Gift className="w-4 h-4 text-primary" />
+                </span>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground">
-                    Referred by{' '}
-                    <span className="font-mono text-primary tracking-wider">
-                      {referralCode}
-                    </span>
+                  <p className="text-eyebrow text-muted-foreground">Referred by</p>
+                  <p className="font-mono text-sm text-primary tracking-wider font-bold leading-tight">
+                    {referralCode}
                   </p>
                 </div>
               </div>
@@ -348,7 +352,7 @@ function RegisterForm() {
               </div>
 
               {error && (
-                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive">
+                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-xs text-destructive font-medium">
                   {error}
                 </div>
               )}
@@ -356,20 +360,20 @@ function RegisterForm() {
               <Button
                 type="submit"
                 disabled={loading || !acceptTerms}
-                className="w-full h-11 bg-primary text-primary-foreground hover:bg-primary/90"
+                className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-sm shadow-card hover:shadow-card-hover hover:-translate-y-0.5 active:translate-y-0 transition-all"
               >
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating account…
                   </>
                 ) : (
-                  'Create Account'
+                  'Create account'
                 )}
               </Button>
 
               <p className="text-center text-sm text-muted-foreground pt-2">
                 Already have an account?{' '}
-                <Link href="/login" className="text-primary font-medium hover:underline">
+                <Link href="/login" className="text-primary font-semibold hover:text-primary/80 transition-colors">
                   Sign in
                 </Link>
               </p>

@@ -62,17 +62,21 @@ export default function LoginPage() {
         </div>
       </header>
 
-      <main className="flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <div className="bg-card rounded-2xl border border-border p-6 sm:p-8">
-            <div className="text-center mb-8">
-              <h1 className="text-2xl font-bold text-foreground mb-2">Welcome Back</h1>
-              <p className="text-muted-foreground">Sign in to your account to continue</p>
+      <main className="flex-1 flex items-center justify-center p-4 py-8">
+        <div className="relative w-full max-w-md">
+          {/* Decorative ambient glows — give the auth card a sense of place */}
+          <div aria-hidden className="absolute -top-16 -left-12 w-56 h-56 rounded-full bg-primary/20 blur-3xl pointer-events-none" />
+          <div aria-hidden className="absolute -bottom-16 -right-12 w-56 h-56 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+
+          <div className="relative bg-card rounded-2xl border border-border p-6 sm:p-8 shadow-card">
+            <div className="text-center mb-7">
+              <h1 className="text-title font-bold text-foreground mb-1.5 tracking-tight">Welcome back</h1>
+              <p className="text-sm text-muted-foreground">Sign in to your account to continue</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="space-y-2">
-                <label htmlFor="identifier" className="text-sm font-medium text-foreground">
+              <div className="space-y-1.5">
+                <label htmlFor="identifier" className="text-xs font-semibold text-foreground">
                   Email or phone number
                 </label>
                 <Input
@@ -82,18 +86,18 @@ export default function LoginPage() {
                   placeholder="you@example.com or 0244XXXXXXX"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  className="h-12 bg-input border-border"
+                  className="h-12 bg-secondary border-border"
                   autoComplete="username"
                   required
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label htmlFor="password" className="text-sm font-medium text-foreground">
+                  <label htmlFor="password" className="text-xs font-semibold text-foreground">
                     Password
                   </label>
-                  <Link href="#" className="text-sm text-primary hover:underline">
+                  <Link href="#" className="text-xs font-medium text-primary hover:text-primary/80 transition-colors">
                     Forgot password?
                   </Link>
                 </div>
@@ -104,7 +108,7 @@ export default function LoginPage() {
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pr-10 h-12 bg-input border-border"
+                    className="pr-10 h-12 bg-secondary border-border"
                     autoComplete="current-password"
                     required
                   />
@@ -125,13 +129,13 @@ export default function LoginPage() {
                   id="remember"
                   className="w-4 h-4 rounded border-border bg-input accent-primary"
                 />
-                <label htmlFor="remember" className="text-sm text-muted-foreground">
+                <label htmlFor="remember" className="text-xs text-muted-foreground">
                   Remember me for 30 days
                 </label>
               </div>
 
               {error && (
-                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive">
+                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-xs text-destructive font-medium">
                   {error}
                 </div>
               )}
@@ -139,12 +143,12 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold text-base"
+                className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-sm shadow-card hover:shadow-card-hover hover:-translate-y-0.5 active:translate-y-0 transition-all"
               >
                 {isLoading ? (
                   <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                    Signing in...
+                    <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                    Signing in…
                   </div>
                 ) : (
                   'Sign In'
@@ -152,21 +156,21 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            <p className="text-center mt-6 text-muted-foreground">
+            <p className="text-center mt-6 text-sm text-muted-foreground">
               {"Don't have an account? "}
-              <Link href="/register" className="text-primary font-medium hover:underline">
+              <Link href="/register" className="text-primary font-semibold hover:text-primary/80 transition-colors">
                 Sign up
               </Link>
             </p>
           </div>
 
-          <p className="text-center mt-6 text-sm text-muted-foreground">
+          <p className="relative text-center mt-5 text-xs text-muted-foreground">
             Need help?{' '}
             <Link
               href={SUPPORT_TELEGRAM_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary hover:underline"
+              className="text-primary font-medium hover:text-primary/80 transition-colors"
             >
               Contact Support
             </Link>

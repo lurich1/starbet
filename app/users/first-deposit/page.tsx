@@ -187,16 +187,23 @@ function DepositForm() {
         </div>
       </header>
 
-      <main className="flex-1 flex items-start sm:items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <div className="bg-card rounded-2xl border border-border p-5 sm:p-8">
+      <main className="flex-1 flex items-start sm:items-center justify-center p-4 py-8">
+        <div className="relative w-full max-w-md">
+          {/* Ambient glow blobs match the auth visual language */}
+          <div aria-hidden className="absolute -top-16 -left-12 w-56 h-56 rounded-full bg-primary/20 blur-3xl pointer-events-none" />
+          <div aria-hidden className="absolute -bottom-16 -right-12 w-56 h-56 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+
+          <div className="relative bg-card rounded-2xl border border-border p-5 sm:p-8 shadow-card">
             {showSuccess && profile ? (
               <div className="text-center space-y-4">
-                <div className="w-16 h-16 mx-auto rounded-2xl bg-success/15 flex items-center justify-center">
-                  <CheckCircle2 className="w-8 h-8 text-success" />
+                <div className="relative w-16 h-16 mx-auto">
+                  <div aria-hidden className="absolute inset-0 rounded-2xl bg-success/20 blur-xl" />
+                  <div className="relative w-16 h-16 rounded-2xl bg-success/15 border border-success/30 flex items-center justify-center shadow-card">
+                    <CheckCircle2 className="w-8 h-8 text-success" />
+                  </div>
                 </div>
-                <h1 className="text-2xl font-bold">{headingTitle}</h1>
-                <div className="bg-secondary rounded-lg p-4 text-left space-y-2">
+                <h1 className="text-title font-bold tracking-tight">{headingTitle}</h1>
+                <div className="bg-secondary/60 border border-border rounded-xl p-4 text-left space-y-2">
                   <Row
                     label="Total deposited"
                     value={`${currency} ${formatMoney(profile.totalDeposited, currency)}`}
@@ -210,7 +217,7 @@ function DepositForm() {
                 </div>
                 <Button
                   onClick={() => router.push('/me')}
-                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                  className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90 font-bold shadow-card hover:shadow-card-hover hover:-translate-y-0.5 active:translate-y-0 transition-all"
                 >
                   View account
                 </Button>
@@ -218,7 +225,7 @@ function DepositForm() {
             ) : (
               <>
                 {profile && (
-                  <div className="flex items-center gap-3 mb-5 p-3 rounded-xl bg-secondary border border-border">
+                  <div className="flex items-center gap-3 mb-5 p-3 rounded-xl bg-secondary/60 border border-border shadow-card">
                     <div className="w-11 h-11 rounded-full bg-primary/15 border-2 border-primary flex items-center justify-center text-base font-bold text-primary shrink-0">
                       {profile.name.charAt(0).toUpperCase()}
                     </div>
@@ -226,42 +233,43 @@ function DepositForm() {
                       <p className="text-sm font-bold text-foreground truncate">
                         {profile.name}
                       </p>
-                      <p className="text-[11px] text-muted-foreground truncate">
+                      <p className="text-[11px] text-muted-foreground truncate font-mono">
                         ID: {profile.id.slice(0, 8)}…
                       </p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                        Balance
-                      </p>
-                      <p className="text-sm font-bold text-foreground tabular-nums">
+                      <p className="text-eyebrow text-muted-foreground">Balance</p>
+                      <p className="text-sm font-bold text-foreground tabular-nums mt-0.5">
                         {currency} {formatMoney(profile.balance, currency)}
                       </p>
                     </div>
                   </div>
                 )}
                 {!profile && !profileLoading && userId && (
-                  <div className="mb-5 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive">
+                  <div className="mb-5 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-xs text-destructive font-medium">
                     Could not load profile for this user.
                   </div>
                 )}
 
                 <div className="text-center mb-6">
-                  <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-primary/10 flex items-center justify-center">
-                    <Wallet className="w-7 h-7 text-primary" />
+                  <div className="relative w-14 h-14 mx-auto mb-3">
+                    <div aria-hidden className="absolute inset-0 rounded-2xl bg-primary/25 blur-xl" />
+                    <div className="relative w-14 h-14 rounded-2xl bg-primary/10 border border-primary/30 flex items-center justify-center shadow-card">
+                      <Wallet className="w-7 h-7 text-primary" />
+                    </div>
                   </div>
-                  <h1 className="text-2xl font-bold text-foreground">{headingTitle}</h1>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <h1 className="text-title font-bold text-foreground tracking-tight">{headingTitle}</h1>
+                  <p className="text-sm text-muted-foreground mt-1.5">
                     {gateway === 'moolre'
                       ? 'Pay with MTN, Telecel or AT Money on Moolre.'
                       : `Pay with card or bank on Paystack (${countryCfg.name}).`}
-                    {' '}Minimum deposit: {currency} {minAmount}.
+                    {' '}Minimum deposit: <span className="text-foreground font-semibold">{currency} {minAmount}</span>.
                   </p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">
+                    <label className="text-eyebrow text-muted-foreground block mb-2">
                       Amount ({currency})
                     </label>
                     <Input
@@ -271,12 +279,12 @@ function DepositForm() {
                       min={minAmount}
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
-                      className="text-2xl h-14 bg-secondary border-border font-bold tabular-nums"
+                      className="text-2xl h-14 bg-secondary border-border font-extrabold tabular-nums"
                       required
                     />
                   </div>
 
-                  <div className="flex gap-2 flex-wrap">
+                  <div className="grid grid-cols-4 gap-2">
                     {[minAmount, minAmount * 1.5, minAmount * 2.5, minAmount * 5]
                       .map((n) => Math.round(n).toString())
                       .map((preset) => (
@@ -284,10 +292,10 @@ function DepositForm() {
                           key={preset}
                           type="button"
                           onClick={() => setAmount(preset)}
-                          className={`flex-1 min-w-[60px] py-2 rounded-md text-sm font-medium transition-colors ${
+                          className={`py-2 rounded-lg text-sm font-bold transition-all ${
                             amount === preset
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-secondary text-muted-foreground hover:text-foreground'
+                              ? 'bg-primary text-primary-foreground shadow-card-pressed'
+                              : 'bg-secondary text-foreground hover:bg-secondary/70 hover:-translate-y-0.5 hover:shadow-card'
                           }`}
                         >
                           {preset}
@@ -296,27 +304,27 @@ function DepositForm() {
                   </div>
 
                   {error && (
-                    <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive flex items-start gap-2">
+                    <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-xs text-destructive font-medium flex items-start gap-2">
                       <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                       <span>{error}</span>
                     </div>
                   )}
 
-                  <div className="p-3 rounded-lg bg-secondary/60 border border-border text-[11px] text-muted-foreground flex items-start gap-2">
+                  <div className="p-3 rounded-lg bg-primary/5 border border-primary/15 text-[11px] text-muted-foreground flex items-start gap-2">
                     <Info className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
                     <span>
-                      You&apos;ll be redirected to {gateway === 'moolre' ? 'Moolre' : 'Paystack'} to pay.
+                      You&apos;ll be redirected to <span className="font-semibold text-foreground">{gateway === 'moolre' ? 'Moolre' : 'Paystack'}</span> to pay.
                       {gateway === 'moolre'
                         ? ' Your balance is credited within a few minutes of payment — check '
                         : ' Your balance is credited automatically once the payment confirms — check '}
-                      <strong>My Account</strong> after.
+                      <strong className="text-foreground">My Account</strong> after.
                     </span>
                   </div>
 
                   <Button
                     type="submit"
                     disabled={loading || !profile}
-                    className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90"
+                    className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-sm shadow-card hover:shadow-card-hover hover:-translate-y-0.5 active:translate-y-0 transition-all"
                   >
                     {loading ? (
                       <>
