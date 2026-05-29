@@ -378,24 +378,27 @@ function MePageInner() {
   if (!profile) {
     return (
       <div className="min-h-screen bg-background flex flex-col pb-20">
-        <div className="px-6 pt-12 pb-16 text-center">
-          <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-primary/15 border-2 border-primary flex items-center justify-center">
-            <Wallet className="w-9 h-9 text-primary" />
+        <div className="px-6 pt-12 pb-16 text-center max-w-sm mx-auto">
+          <div className="relative w-20 h-20 mx-auto mb-5">
+            <div aria-hidden className="absolute inset-0 rounded-full bg-primary/15 blur-xl" />
+            <div className="relative w-20 h-20 rounded-2xl bg-primary/10 border border-primary/30 flex items-center justify-center shadow-card">
+              <Wallet className="w-9 h-9 text-primary" />
+            </div>
           </div>
-          <h1 className="text-2xl font-bold text-foreground mb-1">Welcome to Prime Bet</h1>
+          <h1 className="text-title font-bold text-foreground mb-1.5">Welcome to Prime Bet</h1>
           <p className="text-muted-foreground text-sm mb-6">
             Sign in to view your balance and wallet.
           </p>
-          <div className="flex gap-3 max-w-sm mx-auto">
+          <div className="flex gap-3">
             <Link
               href="/login"
-              className="flex-1 py-3 rounded-xl border-2 border-primary text-primary font-bold text-center hover:bg-primary/10 transition-colors"
+              className="flex-1 h-12 inline-flex items-center justify-center rounded-xl border-2 border-primary text-primary font-bold hover:bg-primary/10 transition-colors"
             >
               Login
             </Link>
             <Link
               href="/register"
-              className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-center hover:bg-primary/90 transition-colors"
+              className="flex-1 h-12 inline-flex items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-all shadow-card hover:shadow-card-hover hover:-translate-y-0.5"
             >
               Register
             </Link>
@@ -448,94 +451,100 @@ function MePageInner() {
 
       {/* Balance card */}
       <section className="px-3 sm:px-4 pt-4">
-        <div className="rounded-2xl bg-card border border-border p-4 shadow-sm">
-          <div className="flex items-center justify-between mb-1 gap-2">
-            <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold truncate">
-              Total Balance
-            </span>
-            <button
-              type="button"
-              onClick={() => setBalanceHidden((v) => !v)}
-              className="shrink-0 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-              aria-label={balanceHidden ? 'Show balance' : 'Hide balance'}
-            >
-              {balanceHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
-          </div>
-          <p className="text-2xl sm:text-3xl font-bold text-foreground tabular-nums mb-4 truncate">
-            {balanceHidden
-              ? '••••••'
-              : `${currency} ${formatMoney(balance, currency)}`}
-          </p>
+        <div className="relative rounded-2xl bg-gradient-to-br from-card via-card to-secondary/30 border border-border shadow-card overflow-hidden">
+          <div aria-hidden className="absolute -right-12 -top-12 w-48 h-48 rounded-full bg-primary/10 blur-3xl" />
+          <div className="relative p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-1.5 gap-2">
+              <span className="text-eyebrow text-muted-foreground truncate">
+                Total Balance
+              </span>
+              <button
+                type="button"
+                onClick={() => setBalanceHidden((v) => !v)}
+                className="shrink-0 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                aria-label={balanceHidden ? 'Show balance' : 'Hide balance'}
+              >
+                {balanceHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            <div className="flex items-baseline gap-2 mb-4 min-w-0">
+              <span className="text-sm font-bold text-muted-foreground tabular-nums shrink-0">
+                {currency}
+              </span>
+              <span className="text-display font-black text-foreground tabular-nums truncate rounded-md px-1 -mx-1">
+                {balanceHidden ? '••••••' : formatMoney(balance, currency)}
+              </span>
+            </div>
 
-          <div className="flex gap-2">
-            <Link
-              href={depositHref}
-              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm transition-colors min-w-0"
-            >
-              <Wallet className="w-4 h-4 shrink-0" strokeWidth={2.25} />
-              <span className="truncate">Deposit</span>
-            </Link>
-            <button
-              type="button"
-              onClick={handleWithdraw}
-              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-primary bg-transparent text-primary hover:bg-primary/10 font-bold text-sm transition-colors min-w-0"
-            >
-              <Banknote className="w-4 h-4 shrink-0" strokeWidth={2.25} />
-              <span className="truncate">Withdraw</span>
-            </button>
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              <Link
+                href={depositHref}
+                className="group/btn inline-flex items-center justify-center gap-2 h-12 rounded-xl bg-primary text-primary-foreground font-bold text-sm shadow-card hover:shadow-card-hover hover:-translate-y-0.5 active:translate-y-0 transition-all min-w-0"
+              >
+                <Wallet className="w-4 h-4 shrink-0 transition-transform group-hover/btn:scale-110" strokeWidth={2.25} />
+                <span className="truncate">Deposit</span>
+              </Link>
+              <button
+                type="button"
+                onClick={handleWithdraw}
+                className="inline-flex items-center justify-center gap-2 h-12 rounded-xl border-2 border-primary bg-transparent text-primary hover:bg-primary/10 font-bold text-sm transition-colors min-w-0"
+              >
+                <Banknote className="w-4 h-4 shrink-0" strokeWidth={2.25} />
+                <span className="truncate">Withdraw</span>
+              </button>
+            </div>
+            {depositToast && (
+              <div
+                className={`mt-3 p-2.5 rounded-lg text-xs flex items-start justify-between gap-2 border ${
+                  depositToast.kind === 'success'
+                    ? 'bg-success/10 border-success/30 text-foreground'
+                    : 'bg-destructive/10 border-destructive/30 text-destructive'
+                }`}
+              >
+                <span>{depositToast.text}</span>
+                <button
+                  type="button"
+                  onClick={() => setDepositToast(null)}
+                  aria-label="Dismiss"
+                  className="text-muted-foreground hover:text-foreground shrink-0"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+            {noFundsBanner && (
+              <div className="mt-3 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-foreground flex items-start justify-between gap-2">
+                <span>{noFundsBanner}</span>
+                <button
+                  type="button"
+                  onClick={() => setNoFundsBanner(null)}
+                  aria-label="Dismiss"
+                  className="text-muted-foreground hover:text-foreground shrink-0"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
           </div>
-          {depositToast && (
-            <div
-              className={`mt-3 p-2.5 rounded-lg text-xs flex items-start justify-between gap-2 border ${
-                depositToast.kind === 'success'
-                  ? 'bg-success/10 border-success/30 text-foreground'
-                  : 'bg-destructive/10 border-destructive/30 text-destructive'
-              }`}
-            >
-              <span>{depositToast.text}</span>
-              <button
-                type="button"
-                onClick={() => setDepositToast(null)}
-                aria-label="Dismiss"
-                className="text-muted-foreground hover:text-foreground shrink-0"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
-          {noFundsBanner && (
-            <div className="mt-3 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-foreground flex items-start justify-between gap-2">
-              <span>{noFundsBanner}</span>
-              <button
-                type="button"
-                onClick={() => setNoFundsBanner(null)}
-                aria-label="Dismiss"
-                className="text-muted-foreground hover:text-foreground shrink-0"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Stats row */}
-        <div className="grid grid-cols-2 gap-2 mt-3">
-          <div className="rounded-xl bg-card border border-border p-2.5 sm:p-3 min-w-0">
-            <div className="flex items-center gap-1.5 text-muted-foreground text-[10px] uppercase tracking-wide font-semibold">
+        <div className="grid grid-cols-2 gap-2.5 mt-3">
+          <div className="rounded-xl bg-card border border-border p-3 min-w-0 shadow-card lift-on-hover">
+            <div className="flex items-center gap-1.5 text-muted-foreground text-eyebrow">
               <TrendingUp className="w-3 h-3 text-primary shrink-0" />
               <span className="truncate">Deposited</span>
             </div>
-            <p className="text-sm sm:text-base font-bold text-foreground tabular-nums mt-1 truncate">
+            <p className="text-sm sm:text-base font-bold text-foreground tabular-nums mt-1.5 truncate">
               {balanceHidden ? '••••' : `${currency} ${formatMoney(profile.totalDeposited, currency)}`}
             </p>
           </div>
-          <div className="rounded-xl bg-card border border-border p-2.5 sm:p-3 min-w-0">
-            <div className="flex items-center gap-1.5 text-muted-foreground text-[10px] uppercase tracking-wide font-semibold">
+          <div className="rounded-xl bg-card border border-border p-3 min-w-0 shadow-card lift-on-hover">
+            <div className="flex items-center gap-1.5 text-muted-foreground text-eyebrow">
               <TrendingDown className="w-3 h-3 text-amber-500 shrink-0" />
               <span className="truncate">Withdrawn</span>
             </div>
-            <p className="text-sm sm:text-base font-bold text-foreground tabular-nums mt-1 truncate">
+            <p className="text-sm sm:text-base font-bold text-foreground tabular-nums mt-1.5 truncate">
               {balanceHidden ? '••••' : `${currency} ${formatMoney(profile.totalWithdrawn, currency)}`}
             </p>
           </div>
@@ -544,19 +553,21 @@ function MePageInner() {
 
       {/* Quick links */}
       <section className="px-3 sm:px-4 pt-3">
-        <div className="grid grid-cols-3 bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
+        <div className="grid grid-cols-3 bg-card border border-border rounded-2xl shadow-card overflow-hidden">
           {QUICK_LINKS.map((item, i) => {
             const Icon = item.icon
             return (
               <Link
                 key={item.label}
                 href={item.href}
-                className={`flex flex-col items-center gap-1.5 py-3.5 px-1.5 sm:px-2 hover:bg-secondary/40 transition-colors min-w-0 ${
+                className={`group/quick flex flex-col items-center gap-1.5 py-4 px-1.5 sm:px-2 hover:bg-primary/5 transition-colors min-w-0 ${
                   i > 0 ? 'border-l border-border' : ''
                 }`}
               >
-                <Icon className="w-5 h-5 text-primary shrink-0" />
-                <span className="text-[10px] sm:text-[11px] text-center leading-tight font-medium text-foreground line-clamp-2">
+                <span className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center group-hover/quick:bg-primary/15 transition-colors">
+                  <Icon className="w-4 h-4 text-primary shrink-0" />
+                </span>
+                <span className="text-[10px] sm:text-[11px] text-center leading-tight font-semibold text-foreground line-clamp-2">
                   {item.label}
                   {'badge' in item && item.badge ? ` (${item.badge})` : ''}
                 </span>
@@ -568,7 +579,7 @@ function MePageInner() {
 
       {/* Menu list */}
       <main className="flex-1 px-3 sm:px-4 pt-3">
-        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-card">
           <ul className="divide-y divide-border">
             {MENU_ITEMS.map((item) => {
               const Icon = item.icon
@@ -637,7 +648,7 @@ function MePageInner() {
           aria-hidden
         />
         {profile && (
-          <div className="relative w-full max-w-md bg-card border border-border rounded-2xl p-6 shadow-xl">
+          <div className="relative w-full max-w-md bg-card border border-border rounded-2xl p-6 shadow-popover animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-foreground">
                 {(profile.verificationStep ?? 0) < 2

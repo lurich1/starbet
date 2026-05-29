@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
 import { formatMoney } from '@/lib/format-money'
 
 interface SubAdminRow {
@@ -191,12 +192,12 @@ export default function AdminSubAdminsPage() {
   ).sort()
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 max-w-6xl">
+    <div className="p-4 sm:p-6 space-y-5 max-w-6xl">
       <div>
-        <h1 className="text-2xl font-bold">Sub-admins (Partners)</h1>
+        <h1 className="text-title font-bold tracking-tight">Sub-admins (Partners)</h1>
         <p className="text-sm text-muted-foreground">
           Partners self-register at{' '}
-          <code className="font-mono text-xs">/sub-admin/register</code>. They earn 60% on
+          <code className="font-mono text-xs px-1.5 py-0.5 rounded bg-secondary">/sub-admin/register</code>. They earn 60% on
           every deposit from each referred user.
         </p>
       </div>
@@ -209,36 +210,38 @@ export default function AdminSubAdminsPage() {
 
       {/* Money split — every referred-user deposit splits 60/40 */}
       {currenciesInPlay.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No referred deposits yet.</p>
+        <div className="bg-card border border-dashed border-border rounded-xl p-6 text-center">
+          <p className="text-sm text-muted-foreground">No referred deposits yet.</p>
+        </div>
       ) : (
-        <div className="bg-card border border-border rounded-xl p-3 overflow-x-auto">
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold mb-2">
+        <div className="bg-card border border-border rounded-xl p-4 overflow-x-auto shadow-card">
+          <p className="text-eyebrow text-muted-foreground mb-2.5">
             Money split by currency
           </p>
           <table className="w-full text-sm">
             <thead>
               <tr className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                <th className="text-left font-semibold py-1">Currency</th>
-                <th className="text-right font-semibold py-1">Referred deposits</th>
-                <th className="text-right font-semibold py-1">Sub-admin 60%</th>
-                <th className="text-right font-semibold py-1">Admin 40%</th>
-                <th className="text-right font-semibold py-1">Outstanding</th>
+                <th className="text-left font-semibold py-1.5">Currency</th>
+                <th className="text-right font-semibold py-1.5">Referred deposits</th>
+                <th className="text-right font-semibold py-1.5">Sub-admin 60%</th>
+                <th className="text-right font-semibold py-1.5">Admin 40%</th>
+                <th className="text-right font-semibold py-1.5">Outstanding</th>
               </tr>
             </thead>
             <tbody>
               {currenciesInPlay.map((cur) => (
-                <tr key={cur} className="border-t border-border">
-                  <td className="py-1.5 font-semibold">{cur}</td>
-                  <td className="py-1.5 text-right tabular-nums">
+                <tr key={cur} className="border-t border-border hover:bg-secondary/30 transition-colors">
+                  <td className="py-2 font-semibold">{cur}</td>
+                  <td className="py-2 text-right tabular-nums">
                     {formatMoney(platform.referredDepositsByCurrency[cur] ?? 0, cur)}
                   </td>
-                  <td className="py-1.5 text-right tabular-nums">
+                  <td className="py-2 text-right tabular-nums">
                     {formatMoney(platform.subAdminShareByCurrency[cur] ?? 0, cur)}
                   </td>
-                  <td className="py-1.5 text-right tabular-nums text-success">
+                  <td className="py-2 text-right tabular-nums text-success font-semibold">
                     {formatMoney(platform.adminShareByCurrency[cur] ?? 0, cur)}
                   </td>
-                  <td className="py-1.5 text-right tabular-nums">
+                  <td className="py-2 text-right tabular-nums font-semibold">
                     {formatMoney(outstandingByCurrency[cur] ?? 0, cur)}
                   </td>
                 </tr>
@@ -261,23 +264,27 @@ export default function AdminSubAdminsPage() {
       </div>
 
       {error && (
-        <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+        <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-sm shadow-card">
           {error}
         </div>
       )}
 
       {loading ? (
-        <div className="flex items-center text-muted-foreground py-12 justify-center">
-          <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
+        <div className="space-y-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-16 rounded-xl" />
+          ))}
         </div>
       ) : filtered.length === 0 ? (
-        <p className="text-center text-muted-foreground py-12 text-sm">
-          {rows.length === 0
-            ? 'No partners yet. Share /sub-admin/register to start signing them up.'
-            : 'No partners match the current search.'}
-        </p>
+        <div className="bg-card border border-dashed border-border rounded-xl p-8 text-center">
+          <p className="text-sm text-muted-foreground">
+            {rows.length === 0
+              ? 'No partners yet. Share /sub-admin/register to start signing them up.'
+              : 'No partners match the current search.'}
+          </p>
+        </div>
       ) : (
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="bg-card border border-border rounded-xl overflow-hidden shadow-card">
           <div className="hidden md:grid grid-cols-[1fr_100px_80px_80px_100px_100px_100px] gap-3 px-4 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground border-b border-border bg-secondary/40">
             <span>Partner</span>
             <span>Code</span>
@@ -412,20 +419,20 @@ function Tile({
 }) {
   return (
     <div
-      className={`rounded-xl p-3 border ${
+      className={`rounded-xl p-4 border shadow-card lift-on-hover ${
         highlight ? 'bg-success/10 border-success/30' : 'bg-card border-border'
       }`}
     >
       <p
-        className={`text-[10px] uppercase tracking-wide font-semibold ${
+        className={`text-eyebrow ${
           highlight ? 'text-success' : 'text-muted-foreground'
         }`}
       >
         {label}
       </p>
       <p
-        className={`text-xl font-bold tabular-nums mt-1 ${
-          highlight ? 'text-success' : ''
+        className={`text-2xl font-extrabold tabular-nums tracking-tight mt-1.5 ${
+          highlight ? 'text-success' : 'text-foreground'
         }`}
       >
         {value}

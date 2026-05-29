@@ -5,10 +5,10 @@ import Link from 'next/link'
 import {
   Receipt,
   TrendingUp,
-  Loader2,
   ArrowRight,
 } from 'lucide-react'
 import { formatMoney } from '@/lib/format-money'
+import { Skeleton } from '@/components/ui/skeleton'
 
 interface StatsResponse {
   counts: { total: number; open: number; won: number; lost: number; users: number }
@@ -77,9 +77,17 @@ export default function AdminOverviewPage() {
 
   if (!stats) {
     return (
-      <div className="p-6 flex items-center text-muted-foreground">
-        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-        Loading stats…
+      <div className="p-4 sm:p-6 space-y-6 max-w-6xl">
+        <div className="space-y-1.5">
+          <Skeleton className="h-7 w-32" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 rounded-xl" />
+          ))}
+        </div>
+        <Skeleton className="h-40 rounded-xl" />
       </div>
     )
   }
@@ -89,7 +97,7 @@ export default function AdminOverviewPage() {
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-6xl">
       <div>
-        <h1 className="text-2xl font-bold">Overview</h1>
+        <h1 className="text-title font-bold tracking-tight">Overview</h1>
         <p className="text-sm text-muted-foreground">
           Live stats from Supabase. Refreshes every 15s.
         </p>
@@ -108,8 +116,8 @@ export default function AdminOverviewPage() {
       </div>
 
       {/* Money by currency — one row per wallet currency */}
-      <div className="bg-card border border-border rounded-xl p-4">
-        <h2 className="font-semibold mb-3 flex items-center gap-2">
+      <div className="bg-card border border-border rounded-xl p-4 shadow-card">
+        <h2 className="font-semibold mb-3 flex items-center gap-2 text-title">
           Money by currency
         </h2>
         <CurrencyTable
@@ -122,10 +130,10 @@ export default function AdminOverviewPage() {
 
       {/* Chart + Top leagues */}
       <div className="grid lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 bg-card border border-border rounded-xl p-4">
+        <div className="lg:col-span-2 bg-card border border-border rounded-xl p-4 shadow-card">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold">Bets — last 7 days</h2>
-            <span className="text-xs text-muted-foreground">
+            <h2 className="font-semibold text-title">Bets — last 7 days</h2>
+            <span className="text-xs text-muted-foreground tabular-nums">
               Total: {stats.byDay.reduce((s, d) => s + d.count, 0)}
             </span>
           </div>
@@ -154,19 +162,21 @@ export default function AdminOverviewPage() {
           </div>
         </div>
 
-        <div className="bg-card border border-border rounded-xl p-4">
-          <h2 className="font-semibold mb-4">Top picks by league</h2>
+        <div className="bg-card border border-border rounded-xl p-4 shadow-card">
+          <h2 className="font-semibold mb-4 text-title">Top picks by league</h2>
           {stats.topLeagues.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No bets yet.</p>
+            <div className="bg-card border border-dashed border-border rounded-lg p-4 text-center">
+              <p className="text-xs text-muted-foreground">No bets yet.</p>
+            </div>
           ) : (
             <ul className="space-y-2">
               {stats.topLeagues.map((l) => (
                 <li
                   key={l.league}
-                  className="flex items-center justify-between text-sm gap-2"
+                  className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg hover:bg-secondary/40 transition-colors text-sm"
                 >
                   <span className="truncate text-foreground">{l.league}</span>
-                  <span className="font-bold tabular-nums shrink-0">{l.picks}</span>
+                  <span className="font-bold tabular-nums shrink-0 text-primary">{l.picks}</span>
                 </li>
               ))}
             </ul>
@@ -175,27 +185,27 @@ export default function AdminOverviewPage() {
       </div>
 
       {/* Recent activity */}
-      <div className="bg-card border border-border rounded-xl">
+      <div className="bg-card border border-border rounded-xl shadow-card">
         <div className="px-4 py-3 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Receipt className="w-4 h-4 text-primary" />
-            <h2 className="font-semibold">Recent activity</h2>
+            <h2 className="font-semibold text-title">Recent activity</h2>
           </div>
           <Link
             href="/admin/bets"
-            className="text-xs text-primary hover:underline flex items-center gap-1"
+            className="text-xs font-medium text-primary hover:text-primary/80 inline-flex items-center gap-1 transition-colors"
           >
             View all <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
         {stats.recent.length === 0 ? (
-          <p className="text-sm text-muted-foreground p-4 text-center">
-            No bets yet. Place one on the home page to see it here.
-          </p>
+          <div className="m-4 bg-card border border-dashed border-border rounded-xl p-6 text-center">
+            <p className="text-sm text-muted-foreground">No bets yet. Place one on the home page to see it here.</p>
+          </div>
         ) : (
           <ul className="divide-y divide-border">
             {stats.recent.map((b) => (
-              <li key={b.id} className="px-4 py-3 flex items-center justify-between gap-3">
+              <li key={b.id} className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-secondary/30 transition-colors">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
                     <span
@@ -320,14 +330,16 @@ function Kpi({
         ? 'text-destructive'
         : 'text-foreground'
   return (
-    <div className="bg-card border border-border rounded-xl p-4">
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
-          {label}
-        </p>
-        {icon}
+    <div className="bg-card border border-border rounded-xl p-4 shadow-card lift-on-hover">
+      <div className="flex items-center justify-between mb-1.5">
+        <p className="text-eyebrow text-muted-foreground">{label}</p>
+        {icon && (
+          <span className="w-7 h-7 rounded-lg bg-secondary flex items-center justify-center">
+            {icon}
+          </span>
+        )}
       </div>
-      <p className={`text-2xl font-bold tabular-nums ${color}`}>{value}</p>
+      <p className={`text-2xl font-extrabold tabular-nums tracking-tight ${color}`}>{value}</p>
       {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
     </div>
   )

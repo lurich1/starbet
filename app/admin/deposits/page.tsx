@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { formatMoney } from '@/lib/format-money'
 
 interface DepositRow {
@@ -162,7 +163,7 @@ export default function AdminDepositsPage() {
     <div className="p-4 sm:p-6 space-y-5 max-w-6xl">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold">Deposits</h1>
+          <h1 className="text-title font-bold tracking-tight">Deposits</h1>
           <p className="text-sm text-muted-foreground">
             All player deposits — Moolre top-ups and admin credits. Newest
             first.
@@ -188,7 +189,7 @@ export default function AdminDepositsPage() {
       </div>
 
       {error && (
-        <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive flex items-center gap-2">
+        <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-xs text-destructive flex items-center gap-2 shadow-card">
           <CircleAlert className="w-4 h-4" /> {error}
         </div>
       )}
@@ -208,14 +209,17 @@ export default function AdminDepositsPage() {
             />
           </div>
           {Object.keys(data.totals.successAmountByCurrency).length > 0 && (
-            <div className="bg-card border border-border rounded-xl p-3">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold mb-2 flex items-center gap-1.5">
+            <div className="bg-card border border-border rounded-xl p-4 shadow-card">
+              <p className="text-eyebrow text-muted-foreground mb-2.5 flex items-center gap-1.5">
                 <TrendingUp className="w-3.5 h-3.5 text-success" /> Total deposited by currency
               </p>
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap gap-4">
                 {Object.entries(data.totals.successAmountByCurrency).map(([cur, total]) => (
-                  <div key={cur} className="text-sm font-bold tabular-nums">
-                    {cur} {formatMoney(total, cur)}
+                  <div key={cur} className="flex items-baseline gap-1.5">
+                    <span className="text-[11px] font-bold text-muted-foreground tabular-nums">{cur}</span>
+                    <span className="text-base font-extrabold tabular-nums tracking-tight">
+                      {formatMoney(total, cur)}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -280,14 +284,16 @@ export default function AdminDepositsPage() {
         </div>
       )}
 
-      <section className="bg-card border border-border rounded-xl overflow-hidden">
+      <section className="bg-card border border-border rounded-xl overflow-hidden shadow-card">
         {loading ? (
-          <div className="px-4 py-10 text-center text-muted-foreground flex items-center justify-center gap-2 text-sm">
-            <Loader2 className="w-4 h-4 animate-spin" /> Loading deposits…
+          <div className="p-3 space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-16 rounded-lg" />
+            ))}
           </div>
         ) : view === 'users' ? (
           filteredRollup.length === 0 ? (
-            <div className="px-4 py-10 text-center text-muted-foreground text-sm">
+            <div className="m-3 bg-card border border-dashed border-border rounded-lg p-8 text-center text-sm text-muted-foreground">
               No depositors match this filter.
             </div>
           ) : (
@@ -295,7 +301,7 @@ export default function AdminDepositsPage() {
               {filteredRollup.map((u) => (
                 <li
                   key={u.userId}
-                  className="px-4 py-3 flex items-center justify-between gap-3"
+                  className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-secondary/30 transition-colors"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-sm truncate">{u.name}</p>
@@ -320,7 +326,7 @@ export default function AdminDepositsPage() {
             </ul>
           )
         ) : filteredDeposits.length === 0 ? (
-          <div className="px-4 py-10 text-center text-muted-foreground text-sm">
+          <div className="m-3 bg-card border border-dashed border-border rounded-lg p-8 text-center text-sm text-muted-foreground">
             No transactions match this filter.
           </div>
         ) : (
@@ -330,7 +336,7 @@ export default function AdminDepositsPage() {
               const isPending = d.status === 'pending'
               const canResolve = (isFailed || isPending) && d.user
               return (
-                <li key={d.id} className="px-4 py-3">
+                <li key={d.id} className="px-4 py-3 hover:bg-secondary/30 transition-colors">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-0.5 text-xs flex-wrap">
@@ -418,14 +424,14 @@ function Kpi({
   value: string
 }) {
   return (
-    <div className="bg-card border border-border rounded-xl p-3">
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
-          {label}
-        </p>
-        {icon}
+    <div className="bg-card border border-border rounded-xl p-4 shadow-card lift-on-hover">
+      <div className="flex items-center justify-between mb-1.5">
+        <p className="text-eyebrow text-muted-foreground">{label}</p>
+        <span className="w-7 h-7 rounded-lg bg-secondary flex items-center justify-center">
+          {icon}
+        </span>
       </div>
-      <p className="text-xl font-bold tabular-nums">{value}</p>
+      <p className="text-2xl font-extrabold tabular-nums tracking-tight">{value}</p>
     </div>
   )
 }

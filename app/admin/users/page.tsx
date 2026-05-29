@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
 import { formatMoney } from '@/lib/format-money'
 
 interface AdminUserRow {
@@ -171,7 +172,7 @@ export default function AdminPlayersPage() {
   return (
     <div className="p-4 sm:p-6 space-y-5 max-w-5xl">
       <div>
-        <h1 className="text-2xl font-bold">Players</h1>
+        <h1 className="text-title font-bold tracking-tight">Players</h1>
         <p className="text-sm text-muted-foreground">
           Every registered user. Use <strong>Credit</strong> to top up a
           balance manually (e.g. when Moolre failed but the user paid).
@@ -181,7 +182,7 @@ export default function AdminPlayersPage() {
       </div>
 
       {error && (
-        <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive flex items-center gap-2">
+        <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-xs text-destructive flex items-center gap-2 shadow-card">
           <CircleAlert className="w-4 h-4" /> {error}
         </div>
       )}
@@ -225,19 +226,21 @@ export default function AdminPlayersPage() {
         </div>
       </div>
 
-      <section className="bg-card border border-border rounded-xl overflow-hidden">
+      <section className="bg-card border border-border rounded-xl overflow-hidden shadow-card">
         {loading ? (
-          <div className="px-4 py-10 text-center text-muted-foreground flex items-center justify-center gap-2 text-sm">
-            <Loader2 className="w-4 h-4 animate-spin" /> Loading players…
+          <div className="p-3 space-y-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-20 rounded-lg" />
+            ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="px-4 py-10 text-center text-muted-foreground text-sm">
+          <div className="m-3 bg-card border border-dashed border-border rounded-lg p-8 text-center text-sm text-muted-foreground">
             No players match this filter.
           </div>
         ) : (
           <ul className="divide-y divide-border">
             {filtered.map((u) => (
-              <li key={u.id} className="px-4 py-3">
+              <li key={u.id} className="px-4 py-3 hover:bg-secondary/30 transition-colors">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-0.5">

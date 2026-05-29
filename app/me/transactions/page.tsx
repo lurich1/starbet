@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import {
   ArrowLeft,
-  Loader2,
   ArrowDownLeft,
   ArrowUpRight,
   Receipt,
@@ -12,6 +11,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { MobileNav } from '@/components/mobile-nav'
+import { Skeleton } from '@/components/ui/skeleton'
 import { getUserId } from '@/lib/user-session'
 import { formatMoney } from '@/lib/format-money'
 
@@ -100,31 +100,44 @@ export default function TransactionsPage() {
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-16 text-muted-foreground">
-          <Loader2 className="w-5 h-5 animate-spin mr-2" />
-          Loading…
+        <div className="px-3 sm:px-4 pt-4 space-y-3">
+          <Skeleton className="h-24 rounded-xl" />
+          <div className="flex gap-2">
+            <Skeleton className="h-7 w-12 rounded-full" />
+            <Skeleton className="h-7 w-20 rounded-full" />
+            <Skeleton className="h-7 w-24 rounded-full" />
+            <Skeleton className="h-7 w-14 rounded-full" />
+          </div>
+          <div className="space-y-2 pt-1">
+            <Skeleton className="h-16 rounded-xl" />
+            <Skeleton className="h-16 rounded-xl" />
+            <Skeleton className="h-16 rounded-xl" />
+          </div>
         </div>
       ) : error ? (
-        <div className="m-4 p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-sm text-destructive">
+        <div className="m-4 p-4 rounded-xl bg-destructive/10 border border-destructive/30 text-sm text-destructive shadow-card">
           {error}
         </div>
       ) : (
         <>
           {data && (
             <section className="px-3 sm:px-4 pt-4">
-              <div className="rounded-xl bg-card border border-border p-4 grid grid-cols-3 gap-3 text-center">
-                <Summary
-                  label="Balance"
-                  value={`${data.user.currency ?? 'GHS'} ${formatMoney(data.user.balance, data.user.currency)}`}
-                />
-                <Summary
-                  label="Deposited"
-                  value={`${data.user.currency ?? 'GHS'} ${formatMoney(data.user.totalDeposited, data.user.currency)}`}
-                />
-                <Summary
-                  label="Withdrawn"
-                  value={`${data.user.currency ?? 'GHS'} ${formatMoney(data.user.totalWithdrawn, data.user.currency)}`}
-                />
+              <div className="rounded-2xl bg-gradient-to-br from-card via-card to-secondary/30 border border-border shadow-card overflow-hidden">
+                <div aria-hidden className="absolute right-0 top-0 w-40 h-40 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+                <div className="relative p-4 grid grid-cols-3 gap-3 text-center">
+                  <Summary
+                    label="Balance"
+                    value={`${data.user.currency ?? 'GHS'} ${formatMoney(data.user.balance, data.user.currency)}`}
+                  />
+                  <Summary
+                    label="Deposited"
+                    value={`${data.user.currency ?? 'GHS'} ${formatMoney(data.user.totalDeposited, data.user.currency)}`}
+                  />
+                  <Summary
+                    label="Withdrawn"
+                    value={`${data.user.currency ?? 'GHS'} ${formatMoney(data.user.totalWithdrawn, data.user.currency)}`}
+                  />
+                </div>
               </div>
             </section>
           )}
@@ -134,10 +147,10 @@ export default function TransactionsPage() {
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap capitalize transition-colors ${
+                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap capitalize transition-all ${
                   filter === f
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-secondary text-muted-foreground hover:text-foreground'
+                    ? 'bg-primary text-primary-foreground shadow-card'
+                    : 'bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/70'
                 }`}
               >
                 {f}
@@ -147,10 +160,10 @@ export default function TransactionsPage() {
 
           <main className="flex-1 px-3 sm:px-4 pt-3">
             {filtered.length === 0 ? (
-              <div className="text-center py-16 text-muted-foreground">
-                <Receipt className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                <p className="text-sm">No transactions yet.</p>
-                <p className="text-xs mt-1">Deposits, withdrawals, and bets will show up here.</p>
+              <div className="bg-card border border-dashed border-border rounded-xl p-8 text-center">
+                <Receipt className="w-10 h-10 mx-auto mb-3 text-muted-foreground/50" />
+                <p className="font-semibold text-sm text-foreground">No transactions yet</p>
+                <p className="text-xs text-muted-foreground mt-1">Deposits, withdrawals, and bets will show up here.</p>
               </div>
             ) : (
               <ul className="space-y-2">
@@ -171,10 +184,8 @@ export default function TransactionsPage() {
 function Summary({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold truncate">
-        {label}
-      </p>
-      <p className="text-sm font-bold tabular-nums mt-0.5 truncate">{value}</p>
+      <p className="text-eyebrow text-muted-foreground truncate">{label}</p>
+      <p className="text-sm font-bold tabular-nums mt-1 truncate">{value}</p>
     </div>
   )
 }
@@ -212,8 +223,8 @@ function TransactionRow({ tx }: { tx: TransactionItem }) {
         : null
 
   return (
-    <li className="bg-card border border-border rounded-xl p-3 flex items-center gap-3">
-      <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center shrink-0">
+    <li className="bg-card border border-border rounded-xl p-3 flex items-center gap-3 shadow-card lift-on-hover">
+      <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center shrink-0">
         {icon}
       </div>
       <div className="min-w-0 flex-1">
