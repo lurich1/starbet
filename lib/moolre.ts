@@ -1,37 +1,153 @@
-// Moolre POS (hosted payment page) flow — Ghana only.
+// Moolre — Ghana payment gateway integration.
 //
-// Earlier we tried Moolre's `embed/src/start` API directly — that route
-// requires a server-issued public key + merchant account number, both of
-// which kept returning AIN01 "Authentication Error" against our credentials.
-// The POS link is a simpler hosted page (https://pos.moolre.com/<slug>) that
-// any customer can hit to send money to the merchant. It has two trade-offs
-// the API call doesn't:
+// We use the `embed/src/start` API to mint a one-shot hosted-checkout URL
+// per transaction. The customer is redirected to that URL, pays via MTN MoMo
+// / Telecel Cash / AirtelTigo Money, and Moolre POSTs the result to our
+// webhook receiver at /api/payments/moolre/callback (signed with
+// MOOLRE_SECRET_KEY) so the player is auto-credited.
 //
-//   1. No per-user/per-amount context — the URL is fixed, so the customer
-//      types their own amount on Moolre's page.
-//   2. No callback — Moolre doesn't redirect back here, so credits aren't
-//      automatic. Admin reconciles each deposit via /admin/players → Credit.
-//
-// We still record a `pending` payments row at /start so the admin can see
-// the user's intent (who, how much, when) and credit them on confirmation.
-//
-// Non-Ghana users hit the Paystack flow instead — see lib/paystack.ts.
+// Endpoint + payload mirror Moolre's official WooCommerce plugin
+// (https://wordpress.org/plugins/moolre-payment-gateway/) — `state: 'starter'`
+// initiates and returns `data.authorization_url`; `state: 'confirm'` verifies
+// a reference after the fact. Only X-Api-Pubkey is required.
 
+import { randomBytes } from 'crypto'
 import { getMinFirstDeposit as countryMinFirstDeposit } from '@/lib/countries'
 
-export function getMoolrePosUrl(): string | null {
-  const url = process.env.MOOLRE_POS_URL?.trim()
-  return url || null
+const MOOLRE_BASE =
+  process.env.MOOLRE_BASE_URL?.trim().replace(/\/$/, '') || 'https://api.moolre.com'
+const MOOLRE_ENDPOINT = `${MOOLRE_BASE}/embed/src/start`
+
+export interface MoolreInitInput {
+  amount: number
+  reference: string
+  email: string
+  callbackUrl: string
+  currency?: string
+}
+
+export interface MoolreInitResult {
+  authorizationUrl: string
+  reference: string
+}
+
+export interface MoolreVerifyResult {
+  /** Raw Moolre response — shape varies by transaction state. */
+  raw: Record<string, unknown>
+  ok: boolean
+  message: string | null
+}
+
+function requireCreds(): { pubKey: string; account: string } {
+  const pubKey = process.env.MOOLRE_PUBLIC_KEY?.trim()
+  const account = process.env.MOOLRE_ACCOUNT_NUMBER?.trim()
+  if (!pubKey) throw new Error('MOOLRE_PUBLIC_KEY is not configured')
+  if (!account) throw new Error('MOOLRE_ACCOUNT_NUMBER is not configured')
+  return { pubKey, account }
+}
+
+function isSuccessfulStatus(status: unknown): boolean {
+  // Moolre uses 1 / true / "1" for success and 0 / false / "0" for failure.
+  if (status === 1 || status === true || status === '1') return true
+  return false
 }
 
 /**
- * Ghana-only minimum first deposit. Other countries should call
+ * Kick off a one-time hosted checkout. Moolre returns an `authorization_url`
+ * we redirect the customer to — they pay there, then Moolre fires our webhook.
+ */
+export async function initialiseMoolreTransaction(
+  input: MoolreInitInput,
+): Promise<MoolreInitResult> {
+  const { pubKey, account } = requireCreds()
+
+  const body = {
+    state: 'starter',
+    accountnumber: account,
+    reference: input.reference,
+    nonce_value: randomBytes(16).toString('hex'),
+    email: input.email,
+    amount: input.amount,
+    currency: input.currency ?? 'GHS',
+    callback: input.callbackUrl,
+    tx_source: 'primebet',
+  }
+
+  const res = await fetch(MOOLRE_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'X-Api-Pubkey': pubKey,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(body),
+    cache: 'no-store',
+  })
+
+  const raw = (await res.json().catch(() => ({}))) as {
+    status?: unknown
+    message?: string | string[]
+    data?: { authorization_url?: string }
+  }
+
+  if (!res.ok || !isSuccessfulStatus(raw.status)) {
+    const detail = Array.isArray(raw.message)
+      ? raw.message.join(' · ')
+      : raw.message ?? `HTTP ${res.status}`
+    throw new Error(`Moolre init failed: ${detail}`)
+  }
+
+  const url = raw.data?.authorization_url
+  if (!url) {
+    throw new Error('Moolre init returned no authorization_url')
+  }
+
+  return { authorizationUrl: url, reference: input.reference }
+}
+
+/**
+ * Confirm a transaction by reference. Useful as a defensive recheck when the
+ * webhook is late or to back-fill a payment that arrived during an outage.
+ */
+export async function verifyMoolreTransaction(
+  reference: string,
+): Promise<MoolreVerifyResult> {
+  const { pubKey, account } = requireCreds()
+
+  const body = {
+    state: 'confirm',
+    accountnumber: account,
+    reference,
+  }
+
+  const res = await fetch(MOOLRE_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'X-Api-Pubkey': pubKey,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(body),
+    cache: 'no-store',
+  })
+
+  const raw = (await res.json().catch(() => ({}))) as {
+    status?: unknown
+    message?: string | string[]
+  }
+
+  const ok = res.ok && isSuccessfulStatus(raw.status)
+  const message = Array.isArray(raw.message)
+    ? raw.message.join(' · ')
+    : raw.message ?? null
+  return { raw, ok, message }
+}
+
+/**
+ * Ghana-only minimum first deposit. Other countries call
  * `getMinFirstDeposit(country)` from `lib/countries.ts` directly.
- *
- * Kept as a thin wrapper for the existing call sites in the Moolre flow.
  */
 export function getMinFirstDeposit(): number {
-  // Env var MIN_FIRST_DEPOSIT (legacy, no country suffix) still overrides GH.
   const raw = process.env.MIN_FIRST_DEPOSIT
   const n = Number(raw)
   if (Number.isFinite(n) && n > 0) return n

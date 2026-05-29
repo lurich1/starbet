@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server'
 import { findUserById } from '@/lib/users-store'
 import { recordPayment } from '@/lib/payments-store'
-import { getMinFirstDeposit, getMoolrePosUrl } from '@/lib/moolre'
+import { initialiseMoolreTransaction } from '@/lib/moolre'
+import { getMinFirstDeposit } from '@/lib/countries'
 
 export const dynamic = 'force-dynamic'
 
 interface StartBody {
   userId?: string
   amount?: number
-  /** Where to send the user after the (manual) reconciliation. */
+  /** Where to send the user after a successful payment. */
   returnPath?: string
   /** Tag for traceability — 'deposit' (default) or 'verification'. */
   purpose?: 'deposit' | 'verification'
@@ -17,6 +18,13 @@ interface StartBody {
 function sanitizeReturnPath(raw: string | undefined): string {
   if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return '/me'
   return raw
+}
+
+function originFromRequest(req: Request): string {
+  const explicit = process.env.NEXT_PUBLIC_APP_URL?.trim()
+  if (explicit) return explicit.replace(/\/$/, '')
+  const url = new URL(req.url)
+  return `${url.protocol}//${url.host}`
 }
 
 export async function POST(request: Request) {
@@ -37,27 +45,11 @@ export async function POST(request: Request) {
   if (!Number.isFinite(amount) || amount <= 0) {
     return NextResponse.json({ error: 'amount must be > 0' }, { status: 400 })
   }
-  const minDeposit = getMinFirstDeposit()
-  if (amount < minDeposit) {
-    return NextResponse.json(
-      { error: `minimum deposit is GHS ${minDeposit.toFixed(2)}` },
-      { status: 400 },
-    )
-  }
-
-  const posUrl = getMoolrePosUrl()
-  if (!posUrl) {
-    return NextResponse.json(
-      { error: 'MOOLRE_POS_URL not configured' },
-      { status: 502 },
-    )
-  }
 
   const user = await findUserById(userId)
   if (!user) return NextResponse.json({ error: 'user not found' }, { status: 404 })
 
-  // Moolre's hosted POS page accepts GHS only — non-Ghana users should be
-  // routed to /api/payments/paystack/start instead.
+  // Moolre is Ghana-only — non-Ghana users go through Paystack.
   if (user.country !== 'GH') {
     return NextResponse.json(
       { error: 'Moolre supports Ghana wallets only — use Paystack' },
@@ -65,12 +57,22 @@ export async function POST(request: Request) {
     )
   }
 
+  const minDeposit = getMinFirstDeposit(user.country)
+  if (amount < minDeposit) {
+    return NextResponse.json(
+      { error: `minimum deposit is ${user.currency} ${minDeposit.toFixed(2)}` },
+      { status: 400 },
+    )
+  }
+
   const refPrefix = purpose === 'verification' ? 'PB-VRF' : 'PB-DEP'
   const reference = `${refPrefix}-${userId.slice(0, 8)}-${Date.now()}`
+  const origin = originFromRequest(request)
+  const callbackUrl = `${origin}/api/payments/moolre/callback`
 
-  // Pending row so the admin can see the intent on /admin/deposits and
-  // credit it once they confirm the payment on the Moolre dashboard. The
-  // unique constraint on `reference` makes this idempotent.
+  // Write the pending row up front so the webhook receiver has something to
+  // look up by reference. Unique constraint on `reference` makes this safe
+  // to retry.
   try {
     await recordPayment({
       userId,
@@ -85,12 +87,30 @@ export async function POST(request: Request) {
         returnPath,
         userName: user.name,
         userPhone: user.phone ?? null,
-        flow: 'pos-link',
+        flow: 'api-init',
       },
     })
   } catch (e) {
     console.error('[moolre/start] pending ledger write failed:', e)
   }
 
-  return NextResponse.json({ url: posUrl, reference }, { status: 201 })
+  try {
+    const init = await initialiseMoolreTransaction({
+      amount,
+      reference,
+      email: user.email,
+      callbackUrl,
+      currency: user.currency,
+    })
+    return NextResponse.json(
+      { url: init.authorizationUrl, reference: init.reference },
+      { status: 201 },
+    )
+  } catch (e) {
+    console.error('[moolre/start] init failed:', e)
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : 'moolre init failed' },
+      { status: 502 },
+    )
+  }
 }
