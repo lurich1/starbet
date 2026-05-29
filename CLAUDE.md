@@ -21,7 +21,7 @@ Use PowerShell on Windows. No test framework is configured.
 - `ODDS_API_KEY` — without it, `/api/matches` returns `customMatches` only with `reason: "ODDS_API_KEY missing"`
 - `ADMIN_PASSWORD` — **unset disables the entire admin section** (proxy returns 503 / redirects to `/admin/login?disabled=1`)
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` — all server-side stores throw if the URL or service-role key is missing
-- `MOOLRE_POS_URL`, `MIN_FIRST_DEPOSIT` — Moolre hosted POS link, **Ghana wallets only**. The deposit page sends GH users to this URL; admin reconciles manually via `/admin/deposits`.
+- `MOOLRE_POS_URL`, `MIN_FIRST_DEPOSIT` — Moolre hosted POS link, **Ghana wallets only**. The deposit page sends GH users to this URL. Without a callback configured, admin must manually reconcile via `/admin/deposits` → Credit. With `MOOLRE_SECRET_KEY` set and the dashboard Callback URL pointed at `/api/payments/moolre/callback`, the webhook receiver auto-credits the player on a verified `success` status (HMAC-SHA256 over the raw body) and fires the same `applyDepositCredit` pipeline Paystack uses, so verification step + sub-admin commission both land automatically.
 - `PAYSTACK_SECRET_KEY`, `PAYSTACK_PUBLIC_KEY` — Paystack credentials used for Nigeria / Kenya / South Africa wallets (and any other non-GH user). Optional `NEXT_PUBLIC_APP_URL` overrides the callback origin. Per-country overrides for amounts: `MIN_FIRST_DEPOSIT_<CC>` and `VERIFICATION_AMOUNT_<CC>` (CC ∈ GH/NG/KE/ZA) — defaults come from `lib/countries.ts`.
 
 ## Architecture
