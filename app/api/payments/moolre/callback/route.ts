@@ -5,43 +5,123 @@ import {
   markPaymentResolved,
 } from '@/lib/payments-store'
 import { applyDepositCredit } from '@/lib/deposit-credit'
+import { verifyMoolreTransaction } from '@/lib/moolre'
 
 export const dynamic = 'force-dynamic'
 
 /**
- * Moolre webhook receiver. The merchant sets the Callback URL in the Moolre
- * dashboard (Wallet → Callbacks) to point at this route — every transaction
- * that touches the linked wallet will POST here with the result.
+ * Moolre callback receiver.
  *
- * Setup checklist (done by the operator, not in code):
- *   1. .env.local / Vercel env vars must define MOOLRE_SECRET_KEY (the Secret
- *      Key from Moolre dashboard → Callbacks). It signs every payload.
- *   2. Moolre dashboard → Callbacks → Callback URL =
- *        https://<your-app>/api/payments/moolre/callback
+ * GET — the primary path. Moolre redirects the customer here after payment
+ * with `?reference=<ours>` in the URL. We call Moolre's `state: confirm`
+ * endpoint to authoritatively check the transaction status, credit the
+ * player on success, and then 303-redirect the browser back to the
+ * `returnPath` we baked into the callback URL on /start.
  *
- * Without MOOLRE_SECRET_KEY set the route refuses every request to avoid
- * crediting on a forged callback.
+ * POST — defence-in-depth. If the merchant configures a server webhook
+ * in their Moolre dashboard, the same handler accepts it: verify the
+ * HMAC-SHA256 over the raw body using MOOLRE_SECRET_KEY, then credit.
+ * Idempotent — if the GET path already credited, this is a no-op ack.
  */
+
+// ────────────────────────────────────────────────────────────────────────
+// GET — user redirect after Moolre payment
+// ────────────────────────────────────────────────────────────────────────
+
+function sanitizeReturnPath(raw: string | null): string {
+  if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return '/me'
+  return raw
+}
+
+function redirectWith(originUrl: URL, returnPath: string, status: string) {
+  const url = new URL(returnPath, originUrl)
+  url.searchParams.set('moolre', status)
+  return NextResponse.redirect(url, 303)
+}
+
+export async function GET(request: Request) {
+  const url = new URL(request.url)
+  const reference =
+    url.searchParams.get('reference') ??
+    url.searchParams.get('externalref') ??
+    ''
+  const returnPath = sanitizeReturnPath(url.searchParams.get('returnPath'))
+
+  if (!reference) {
+    console.warn('[moolre/callback:GET] missing reference', request.url)
+    return redirectWith(url, returnPath, 'missing-reference')
+  }
+
+  const pending = await findPaymentByReference(reference)
+  if (!pending) {
+    console.warn('[moolre/callback:GET] unknown reference', reference)
+    return redirectWith(url, returnPath, 'unknown-reference')
+  }
+
+  if (pending.status === 'success') {
+    return redirectWith(url, returnPath, 'already-credited')
+  }
+
+  // Server-to-server confirm. Moolre's response is authoritative — we
+  // never trust the user-redirect URL alone since the player controls it.
+  let verified
+  try {
+    verified = await verifyMoolreTransaction(reference)
+  } catch (e) {
+    console.error('[moolre/callback:GET] verify failed:', e)
+    return redirectWith(url, returnPath, 'verify-failed')
+  }
+
+  if (!verified.ok) {
+    console.warn('[moolre/callback:GET] confirm not ok', {
+      reference,
+      message: verified.message,
+      raw: verified.raw,
+    })
+    // Mark resolved so it stops appearing in the pending queue, with the
+    // operator-visible note containing Moolre's actual message.
+    await markPaymentResolved(
+      pending.id,
+      `moolre status: ${verified.message ?? 'not-ok'}`,
+    ).catch(() => null)
+    return redirectWith(url, returnPath, 'failed')
+  }
+
+  if (!pending.userId) {
+    console.error('[moolre/callback:GET] pending row has no userId', reference)
+    return redirectWith(url, returnPath, 'no-user')
+  }
+
+  try {
+    await markPaymentResolved(pending.id, 'moolre user-redirect confirm')
+    await applyDepositCredit(pending.userId, pending.amount)
+  } catch (e) {
+    console.error('[moolre/callback:GET] credit pipeline failed:', e)
+    return redirectWith(url, returnPath, 'credit-failed')
+  }
+
+  return redirectWith(url, returnPath, 'success')
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// POST — optional server webhook (HMAC-signed)
+// ────────────────────────────────────────────────────────────────────────
+
 export async function POST(request: Request) {
   const secret = process.env.MOOLRE_SECRET_KEY?.trim()
   if (!secret) {
-    console.error('[moolre/callback] MOOLRE_SECRET_KEY not configured')
-    return NextResponse.json({ error: 'callback not configured' }, { status: 503 })
+    // Webhook is optional — the GET redirect handles the common path. If
+    // the operator hasn't configured a server webhook, ack quietly so we
+    // don't 503 anything Moolre sends as a courtesy.
+    return NextResponse.json({ ok: true, reason: 'webhook-disabled' })
   }
 
-  // Moolre signs the raw body with HMAC-SHA256 and ships the hex digest in
-  // one of these headers depending on the dashboard version. We accept any
-  // of them and compare with timingSafeEqual so request timing can't leak
-  // the secret a byte at a time.
   const headerSig =
     request.headers.get('x-moolre-signature') ??
     request.headers.get('x-api-signature') ??
     request.headers.get('x-signature') ??
     ''
 
-  // Read the body as text first so we hash the EXACT bytes Moolre sent. If
-  // we parsed to JSON and re-serialised, key ordering / whitespace would
-  // change and the signature would never match.
   let rawBody: string
   try {
     rawBody = await request.text()
@@ -50,7 +130,7 @@ export async function POST(request: Request) {
   }
 
   if (!verifySignature(rawBody, headerSig, secret)) {
-    console.warn('[moolre/callback] signature mismatch — rejecting')
+    console.warn('[moolre/callback:POST] signature mismatch — rejecting')
     return NextResponse.json({ error: 'invalid signature' }, { status: 401 })
   }
 
@@ -61,8 +141,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'invalid json' }, { status: 400 })
   }
 
-  // Moolre's payload exposes the transaction status under one of several
-  // names depending on operation; we accept any of them.
   const reference = pickString(body, [
     'reference',
     'externalref',
@@ -76,16 +154,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'reference required' }, { status: 400 })
   }
 
-  // Look up the pending row we wrote on the /start side. If the reference
-  // isn't on file we ack the webhook so Moolre doesn't keep retrying, but
-  // log loudly so the operator can investigate.
   const pending = await findPaymentByReference(reference)
   if (!pending) {
-    console.warn('[moolre/callback] unknown reference', reference)
     return NextResponse.json({ ok: true, reason: 'unknown-reference' })
   }
 
-  // Already credited — idempotent ack.
   if (pending.status === 'success') {
     return NextResponse.json({ ok: true, reason: 'already-credited' })
   }
@@ -99,17 +172,14 @@ export async function POST(request: Request) {
     status === '1'
 
   if (!isSuccess) {
-    // Final-state failure — keep the row but tag it so admin can see.
     if (status === 'failed' || status === 'cancelled' || status === '0') {
       await markPaymentResolved(pending.id, `moolre status: ${status}`).catch(() => null)
     }
     return NextResponse.json({ ok: true, reason: `status:${status || 'unknown'}` })
   }
 
-  // Sanity check the amount when Moolre reports one. Don't credit if the
-  // player short-paid; admin can manually reconcile via /admin/deposits.
   if (amountRaw != null && Math.abs(amountRaw - pending.amount) > 0.01) {
-    console.error('[moolre/callback] amount mismatch', {
+    console.error('[moolre/callback:POST] amount mismatch', {
       reference,
       pendingAmount: pending.amount,
       paidAmount: amountRaw,
@@ -118,15 +188,14 @@ export async function POST(request: Request) {
   }
 
   if (!pending.userId) {
-    console.error('[moolre/callback] pending row has no userId', reference)
     return NextResponse.json({ ok: true, reason: 'no-user' })
   }
 
   try {
-    await markPaymentResolved(pending.id, 'moolre webhook')
+    await markPaymentResolved(pending.id, 'moolre server webhook')
     await applyDepositCredit(pending.userId, pending.amount)
   } catch (e) {
-    console.error('[moolre/callback] credit pipeline failed:', e)
+    console.error('[moolre/callback:POST] credit pipeline failed:', e)
     return NextResponse.json({ error: 'credit failed' }, { status: 500 })
   }
 
@@ -137,8 +206,6 @@ function verifySignature(body: string, headerSig: string, secret: string): boole
   if (!headerSig) return false
   const expected = createHmac('sha256', secret).update(body).digest('hex')
   const a = Buffer.from(expected, 'hex')
-  // Moolre sometimes lowercases the hex digest, sometimes the dashboard
-  // shows it uppercase. Normalise both before comparing.
   let provided: Buffer
   try {
     provided = Buffer.from(headerSig.trim().toLowerCase(), 'hex')

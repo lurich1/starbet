@@ -68,7 +68,9 @@ export async function POST(request: Request) {
   const refPrefix = purpose === 'verification' ? 'PB-VRF' : 'PB-DEP'
   const reference = `${refPrefix}-${userId.slice(0, 8)}-${Date.now()}`
   const origin = originFromRequest(request)
-  const callbackUrl = `${origin}/api/payments/moolre/callback`
+  // Bake returnPath into the callback URL so the GET handler knows where
+  // to send the player after Moolre confirm + credit completes.
+  const callbackUrl = `${origin}/api/payments/moolre/callback?returnPath=${encodeURIComponent(returnPath)}`
 
   // Write the pending row up front so the webhook receiver has something to
   // look up by reference. Unique constraint on `reference` makes this safe
