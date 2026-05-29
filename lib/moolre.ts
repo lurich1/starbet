@@ -86,15 +86,26 @@ export async function initialiseMoolreTransaction(
 
   const raw = (await res.json().catch(() => ({}))) as {
     status?: unknown
+    code?: string | number
     message?: string | string[]
     data?: { authorization_url?: string }
   }
 
   if (!res.ok || !isSuccessfulStatus(raw.status)) {
-    const detail = Array.isArray(raw.message)
+    const msg = Array.isArray(raw.message)
       ? raw.message.join(' · ')
       : raw.message ?? `HTTP ${res.status}`
-    throw new Error(`Moolre init failed: ${detail}`)
+    const code = raw.code ? `[${raw.code}] ` : ''
+    // Log the full response so the operator can see Moolre's error code
+    // (AIN01 = bad auth, AIN03 = bad signature, etc.) without redeploying.
+    console.error('[moolre] init rejected', {
+      httpStatus: res.status,
+      moolreStatus: raw.status,
+      moolreCode: raw.code,
+      moolreMessage: raw.message,
+      requestRef: input.reference,
+    })
+    throw new Error(`Moolre init failed: ${code}${msg}`)
   }
 
   const url = raw.data?.authorization_url
