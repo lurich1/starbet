@@ -93,7 +93,13 @@ export async function GET(request: Request) {
   }
 
   try {
-    await markPaymentResolved(pending.id, 'moolre user-redirect confirm')
+    // Atomic gate. markPaymentResolved returns null if another path
+    // (admin "Credit & resolve" or a duplicate redirect) already flipped
+    // the row to success — bail out instead of crediting again.
+    const resolved = await markPaymentResolved(pending.id, 'moolre user-redirect confirm')
+    if (!resolved) {
+      return redirectWith(url, returnPath, 'already-credited')
+    }
     await applyDepositCredit(pending.userId, pending.amount)
   } catch (e) {
     console.error('[moolre/callback:GET] credit pipeline failed:', e)
@@ -192,7 +198,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    await markPaymentResolved(pending.id, 'moolre server webhook')
+    const resolved = await markPaymentResolved(pending.id, 'moolre server webhook')
+    if (!resolved) {
+      return NextResponse.json({ ok: true, reason: 'already-credited' })
+    }
     await applyDepositCredit(pending.userId, pending.amount)
   } catch (e) {
     console.error('[moolre/callback:POST] credit pipeline failed:', e)

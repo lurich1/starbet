@@ -50,14 +50,23 @@ export async function POST(request: Request, { params }: Params) {
     return NextResponse.json({ error: 'invalid amount on payment row' }, { status: 400 })
   }
 
+  // Atomically flip the row to success FIRST. If markPaymentResolved
+  // returns null another caller (the Moolre callback) raced us and has
+  // already credited — bail out instead of crediting again.
+  const resolved = await markPaymentResolved(id, note)
+  if (!resolved) {
+    return NextResponse.json(
+      { error: 'payment already credited by another path' },
+      { status: 409 },
+    )
+  }
+
   // Full deposit pipeline — bumps totals, advances verification step when
   // the amount qualifies, and fires sub-admin commission for referred users.
   const result = await applyDepositCredit(payment.userId, payment.amount)
   if (!result) {
     return NextResponse.json({ error: 'user not found' }, { status: 404 })
   }
-
-  const resolved = await markPaymentResolved(id, note)
 
   return NextResponse.json({
     payment: resolved,

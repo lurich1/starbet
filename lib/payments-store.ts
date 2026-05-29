@@ -153,8 +153,15 @@ export async function findPaymentByReference(
 }
 
 /**
- * Flip a failed/pending payment row to success and stamp who resolved it.
- * Returns the updated record, or null if the row didn't exist.
+ * Atomically flip a non-success payment row to success and stamp who
+ * resolved it. The `.in('status', …)` filter means only ONE concurrent
+ * caller wins — if the row is already success, no rows are updated and
+ * we return null. Callers MUST treat a null return as "another path
+ * already credited this payment, do nothing more" so two callers can't
+ * both run applyDepositCredit on the same row.
+ *
+ * Returns the updated record on success, null if the row was already
+ * resolved OR doesn't exist.
  */
 export async function markPaymentResolved(
   id: string,
@@ -162,6 +169,7 @@ export async function markPaymentResolved(
 ): Promise<PaymentRecord | null> {
   const existing = await findPaymentById(id)
   if (!existing) return null
+  if (existing.status === 'success') return null
   const mergedMeta = {
     ...existing.metadata,
     type: existing.type,
@@ -177,6 +185,9 @@ export async function markPaymentResolved(
       metadata: mergedMeta,
     })
     .eq('id', id)
+    // Postgres-level guard against concurrent double-credits — the row
+    // is only updated if it was still in one of these states.
+    .in('status', ['pending', 'failed', 'cancelled'])
     .select('*')
     .maybeSingle()
   if (error) throw new Error(`payments.markResolved: ${error.message}`)

@@ -65,7 +65,13 @@ export async function GET(request: Request) {
   }
 
   try {
-    await markPaymentResolved(pending.id, 'paystack auto-verify')
+    const resolved = await markPaymentResolved(pending.id, 'paystack auto-verify')
+    if (!resolved) {
+      // Another path (admin manual credit or a duplicate callback) already
+      // ran the credit pipeline on this reference. Short-circuit so we
+      // don't double-credit.
+      return redirectWith(url, returnPath, 'already-credited')
+    }
     await applyDepositCredit(pending.userId, pending.amount)
   } catch (e) {
     console.error('[paystack/callback] credit pipeline failed:', e)
