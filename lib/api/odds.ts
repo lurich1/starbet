@@ -56,6 +56,27 @@ const WHITELISTED_LEAGUE_IDS = new Set<number>([
   292, // K League 1
   169, // Chinese Super League
   188, // A-League
+  // Friendlies & international windows
+  10, // International friendlies
+  667, // Club friendlies
+])
+
+// API-Football uses different bet IDs for pre-match (/odds) and live
+// (/odds/live). These sets union both so averageOdds works for either.
+const MATCH_WINNER_BET_IDS = new Set<number>([
+  1, // pre-match: Match Winner
+  59, // live: Fulltime Result
+])
+const OVER_UNDER_BET_IDS = new Set<number>([
+  5, // pre-match: Goals Over/Under
+  25, // live: Match Goals
+])
+const BTTS_BET_IDS = new Set<number>([
+  8, // pre-match: Both Teams Score
+  69, // live: Both Teams to Score
+])
+const DOUBLE_CHANCE_BET_IDS = new Set<number>([
+  12, // pre-match: Double Chance (no live equivalent in API-Football)
 ])
 
 interface ApiResponse<T> {
@@ -265,23 +286,25 @@ function averageOdds(rows: OddsRow[]): AveragedOdds {
       if (!bm || !Array.isArray(bm.bets)) continue
       for (const bet of bm.bets) {
         if (!bet || !Array.isArray(bet.values)) continue
-        if (bet.id === 1) {
+        if (MATCH_WINNER_BET_IDS.has(bet.id)) {
           for (const v of bet.values) {
             const odd = parseFloat(v.odd)
             if (!Number.isFinite(odd)) continue
             const label = v.value.toLowerCase().trim()
-            if (label === 'home') {
+            // Pre-match returns "Home"/"Draw"/"Away"; some live providers
+            // return "1"/"X"/"2" — handle both.
+            if (label === 'home' || label === '1') {
               homeS += odd
               homeN++
-            } else if (label === 'draw') {
+            } else if (label === 'draw' || label === 'x') {
               drawS += odd
               drawN++
-            } else if (label === 'away') {
+            } else if (label === 'away' || label === '2') {
               awayS += odd
               awayN++
             }
           }
-        } else if (bet.id === 5) {
+        } else if (OVER_UNDER_BET_IDS.has(bet.id)) {
           for (const v of bet.values) {
             const odd = parseFloat(v.odd)
             if (!Number.isFinite(odd)) continue
@@ -300,7 +323,7 @@ function averageOdds(rows: OddsRow[]): AveragedOdds {
             }
             totals.set(line, entry)
           }
-        } else if (bet.id === 8) {
+        } else if (BTTS_BET_IDS.has(bet.id)) {
           for (const v of bet.values) {
             const odd = parseFloat(v.odd)
             if (!Number.isFinite(odd)) continue
@@ -313,7 +336,7 @@ function averageOdds(rows: OddsRow[]): AveragedOdds {
               noN++
             }
           }
-        } else if (bet.id === 12) {
+        } else if (DOUBLE_CHANCE_BET_IDS.has(bet.id)) {
           for (const v of bet.values) {
             const odd = parseFloat(v.odd)
             if (!Number.isFinite(odd)) continue
