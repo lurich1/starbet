@@ -57,9 +57,16 @@ export async function POST(request: Request) {
   }
 
   const rawKyc = (body.kyc ?? body.ghanaCard ?? '').toString()
-  const kycId = normalizeKyc(country, rawKyc)
-  if (!kycId) {
-    return NextResponse.json({ error: cfg.kycError }, { status: 400 })
+  let kycId: string | null = null
+  if (cfg.requiresKyc) {
+    kycId = normalizeKyc(country, rawKyc)
+    if (!kycId) {
+      return NextResponse.json({ error: cfg.kycError }, { status: 400 })
+    }
+  } else if (rawKyc.trim()) {
+    // KYC isn't required for this country, but if the client sent one anyway
+    // (older builds, multi-country forms) keep it if it validates — otherwise drop it.
+    kycId = normalizeKyc(country, rawKyc)
   }
 
   if (!name || !email || !password) {
@@ -109,10 +116,10 @@ export async function POST(request: Request) {
     phone,
     country,
     currency: currencyFromCountry(country),
-    kycId,
+    kycId: kycId ?? undefined,
     // Maintain the dedicated ghanaCard column for GH users so existing admin
     // tooling that still reads `ghana_card` continues to display the value.
-    ghanaCard: country === 'GH' ? kycId : undefined,
+    ghanaCard: country === 'GH' ? (kycId ?? undefined) : undefined,
     referredByCode: validatedReferralCode,
     referredBySubAdminId,
   })

@@ -24,6 +24,8 @@ export interface CountryConfig {
   locale: string
   /** Dial code without "+", used to normalise +234 → 0… style phone numbers. */
   dialCode: string
+  /** Whether the signup form collects (and the API requires) a KYC value. */
+  requiresKyc: boolean
   /** Label shown next to the KYC input on signup. */
   kycLabel: string
   /** Placeholder / hint shown to the user. */
@@ -51,6 +53,7 @@ const COUNTRIES: Record<CountryCode, CountryConfig> = {
     currencySymbol: 'GHS',
     locale: 'en-GB',
     dialCode: '233',
+    requiresKyc: true,
     kycLabel: 'Ghana Card number',
     kycPlaceholder: 'GHA-XXXXXXXXX-X',
     kycError: 'Ghana Card number is required (format: GHA-XXXXXXXXX-X)',
@@ -72,6 +75,7 @@ const COUNTRIES: Record<CountryCode, CountryConfig> = {
     currencySymbol: '₦',
     locale: 'en-NG',
     dialCode: '234',
+    requiresKyc: false,
     kycLabel: 'BVN or NIN',
     kycPlaceholder: '12345678901',
     kycError: 'BVN or NIN must be exactly 11 digits',
@@ -91,6 +95,7 @@ const COUNTRIES: Record<CountryCode, CountryConfig> = {
     currencySymbol: 'KSh',
     locale: 'en-KE',
     dialCode: '254',
+    requiresKyc: true,
     kycLabel: 'National ID number',
     kycPlaceholder: '12345678',
     kycError: 'National ID must be 7 or 8 digits',
@@ -111,6 +116,7 @@ const COUNTRIES: Record<CountryCode, CountryConfig> = {
     currencySymbol: 'R',
     locale: 'en-ZA',
     dialCode: '27',
+    requiresKyc: true,
     kycLabel: 'ID number',
     kycPlaceholder: '1234567890123',
     kycError: 'South African ID must be 13 digits',

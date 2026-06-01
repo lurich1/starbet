@@ -217,25 +217,27 @@ function RegisterForm() {
                 </p>
               </div>
 
-              <div className="space-y-1.5">
-                <label htmlFor="kyc" className="text-sm font-medium text-foreground">
-                  {countryCfg.kycLabel}
-                </label>
-                <Input
-                  id="kyc"
-                  type="text"
-                  inputMode="text"
-                  placeholder={countryCfg.kycPlaceholder}
-                  value={kyc}
-                  onChange={(e) => setKyc(country === 'GH' ? e.target.value.toUpperCase() : e.target.value)}
-                  className="h-11 bg-secondary border-border tracking-wider font-mono"
-                  maxLength={country === 'GH' ? 15 : 20}
-                  required
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Required for account verification.
-                </p>
-              </div>
+              {countryCfg.requiresKyc && (
+                <div className="space-y-1.5">
+                  <label htmlFor="kyc" className="text-sm font-medium text-foreground">
+                    {countryCfg.kycLabel}
+                  </label>
+                  <Input
+                    id="kyc"
+                    type="text"
+                    inputMode="text"
+                    placeholder={countryCfg.kycPlaceholder}
+                    value={kyc}
+                    onChange={(e) => setKyc(country === 'GH' ? e.target.value.toUpperCase() : e.target.value)}
+                    className="h-11 bg-secondary border-border tracking-wider font-mono"
+                    maxLength={country === 'GH' ? 15 : 20}
+                    required
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Required for account verification.
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <label htmlFor="password" className="text-sm font-medium text-foreground">
