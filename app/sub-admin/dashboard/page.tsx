@@ -130,6 +130,18 @@ export default function SubAdminDashboardPage() {
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const referralLink = `${origin}/register?ref=${sa.referralCode}`
 
+  // Sum commissions whose createdAt falls in the current local day.
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+  const todayCommissions: Record<string, number> = {}
+  let todayCount = 0
+  for (const c of data.commissions) {
+    if (new Date(c.createdAt) >= todayStart) {
+      todayCommissions[c.currency] = +(((todayCommissions[c.currency] ?? 0) + c.commission)).toFixed(2)
+      todayCount++
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-card border-b border-border sticky top-0 z-30">
@@ -238,7 +250,7 @@ export default function SubAdminDashboardPage() {
         </section>
 
         {/* KPI tiles */}
-        <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <section className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           <Kpi
             icon={<Users className="w-4 h-4 text-primary" />}
             label="Referrals"
@@ -254,6 +266,13 @@ export default function SubAdminDashboardPage() {
                 : '—'
             }
             sub="signups → first deposit"
+          />
+          <Kpi
+            icon={<Wallet className="w-4 h-4 text-success" />}
+            label="Today"
+            value={formatCurrencyMap(todayCommissions)}
+            sub={`${todayCount} deposit${todayCount === 1 ? '' : 's'} today`}
+            tone="good"
           />
           <Kpi
             icon={<Wallet className="w-4 h-4 text-success" />}
