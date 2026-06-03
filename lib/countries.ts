@@ -59,11 +59,7 @@ const COUNTRIES: Record<CountryCode, CountryConfig> = {
     kycError: 'Ghana Card number is required (format: GHA-XXXXXXXXX-X)',
     minFirstDeposit: 200,
     verificationAmount: 200,
-    // Switched back to Paystack. Moolre integration (lib/moolre.ts,
-    // app/api/payments/moolre/*) is kept intact but unreachable — set
-    // gateway back to 'moolre' to re-enable.
-    gateway: 'paystack',
-    // gateway: 'moolre',
+    gateway: 'moolre',
     payoutTarget: 'mobile',
     payoutNetworks: [
       { key: 'mtn', label: 'MTN MoMo' },
