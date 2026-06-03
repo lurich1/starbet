@@ -63,6 +63,16 @@ export async function applyDepositCredit(
   // as the user was referred by an approved sub-admin. Skip reasons are
   // logged so it's easy to diagnose "I deposited but my referrer didn't get
   // paid" reports from production Vercel logs.
+  //
+  // The commission step is wrapped in its own try/catch + one retry on top
+  // of recordDeposit. Rationale: balance/totals are already updated by the
+  // time we get here. If creditCommission/addCommission throws (DB blip,
+  // sub_admin row write conflict under rapid concurrent deposits) and we
+  // rethrow, the paystack-credit caller's catch returns 'credit-failed' even
+  // though the wallet was funded — and the payment row stays marked success,
+  // so the user has their money but the sub-admin silently loses commission.
+  // Better: log loudly here so the operator can spot the gap and
+  // reconcile it manually.
   let commission: ApplyDepositResult['commission'] = null
   if (!user.referredBySubAdminId) {
     console.log('[deposit-credit] commission skipped: user not referred', {
@@ -87,31 +97,80 @@ export async function applyDepositCredit(
       })
     } else {
       const amt = +(amount * COMMISSION_RATE).toFixed(2)
-      await creditCommission(sa.id, amt, user.currency)
-      await addCommission({
+      commission = await fireCommission({
         subAdminId: sa.id,
         userId: user.id,
-        depositAmount: amount,
-        commission: amt,
-        rate: COMMISSION_RATE,
-        currency: user.currency,
-      })
-      console.log('[deposit-credit] commission credited', {
-        userId: user.id,
-        subAdminId: sa.id,
-        depositAmount: amount,
+        amount,
         commissionAmount: amt,
         currency: user.currency,
         depositNumber: result.isFirst ? 1 : '2+',
       })
-      commission = {
-        amount: amt,
-        rate: COMMISSION_RATE,
-        subAdminId: sa.id,
-        currency: user.currency,
-      }
     }
   }
 
   return { user, isFirstDeposit: result.isFirst, commission }
+}
+
+// Two-attempt commission write so a single transient supabase error doesn't
+// strand a commission. Never rethrows — the caller (verifyAndCreditPaystack
+// etc.) treats any throw as "credit pipeline failed" and tells the user the
+// deposit didn't work, but by this point the wallet has already been funded
+// in applyDepositCredit above. We'd rather lose the commission row (and
+// surface it loudly in logs for backfill) than confuse the depositor.
+async function fireCommission(params: {
+  subAdminId: string
+  userId: string
+  amount: number
+  commissionAmount: number
+  currency: AppUser['currency']
+  depositNumber: number | string
+}): Promise<ApplyDepositResult['commission']> {
+  const { subAdminId, userId, amount, commissionAmount, currency, depositNumber } = params
+  let lastErr: unknown = null
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      await creditCommission(subAdminId, commissionAmount, currency)
+      await addCommission({
+        subAdminId,
+        userId,
+        depositAmount: amount,
+        commission: commissionAmount,
+        rate: COMMISSION_RATE,
+        currency,
+      })
+      console.log('[deposit-credit] commission credited', {
+        userId,
+        subAdminId,
+        depositAmount: amount,
+        commissionAmount,
+        currency,
+        depositNumber,
+        attempt,
+      })
+      return { amount: commissionAmount, rate: COMMISSION_RATE, subAdminId, currency }
+    } catch (e) {
+      lastErr = e
+      console.error('[deposit-credit] commission attempt failed', {
+        attempt,
+        userId,
+        subAdminId,
+        amount,
+        commissionAmount,
+        currency,
+        error: e instanceof Error ? e.message : String(e),
+      })
+      if (attempt < 2) {
+        await new Promise((r) => setTimeout(r, 150))
+      }
+    }
+  }
+  console.error('[deposit-credit] commission permanently failed — backfill required', {
+    userId,
+    subAdminId,
+    amount,
+    commissionAmount,
+    currency,
+    error: lastErr instanceof Error ? lastErr.message : String(lastErr),
+  })
+  return null
 }
