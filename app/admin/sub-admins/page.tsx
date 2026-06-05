@@ -223,8 +223,8 @@ export default function AdminSubAdminsPage() {
               <tr className="text-[10px] uppercase tracking-wide text-muted-foreground">
                 <th className="text-left font-semibold py-1.5">Currency</th>
                 <th className="text-right font-semibold py-1.5">Referred deposits</th>
-                <th className="text-right font-semibold py-1.5">Sub-admin 70%</th>
-                <th className="text-right font-semibold py-1.5">Admin 30%</th>
+                <th className="text-right font-semibold py-1.5">Sub-admin share</th>
+                <th className="text-right font-semibold py-1.5">Admin share</th>
                 <th className="text-right font-semibold py-1.5">Outstanding</th>
               </tr>
             </thead>
