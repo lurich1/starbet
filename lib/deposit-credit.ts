@@ -51,28 +51,14 @@ export async function applyDepositCredit(
   let user = result.user
   const verificationThreshold = getVerificationAmount(userBefore.country)
 
-  if (
-    amount >= verificationThreshold &&
-    (user.verificationStep ?? 0) < 4
-  ) {
-    const advanced = await advanceVerificationStep(userId)
-    if (advanced) user = advanced
-  }
-
   // Commission fires on EVERY confirmed deposit (not just the first) as long
   // as the user was referred by an approved sub-admin. Skip reasons are
   // logged so it's easy to diagnose "I deposited but my referrer didn't get
   // paid" reports from production Vercel logs.
   //
-  // The commission step is wrapped in its own try/catch + one retry on top
-  // of recordDeposit. Rationale: balance/totals are already updated by the
-  // time we get here. If creditCommission/addCommission throws (DB blip,
-  // sub_admin row write conflict under rapid concurrent deposits) and we
-  // rethrow, the paystack-credit caller's catch returns 'credit-failed' even
-  // though the wallet was funded — and the payment row stays marked success,
-  // so the user has their money but the sub-admin silently loses commission.
-  // Better: log loudly here so the operator can spot the gap and
-  // reconcile it manually.
+  // Runs BEFORE the verification-step bump. If the verification update ever
+  // throws (e.g. a pending CHECK-constraint migration), the commission still
+  // lands instead of being silently swallowed alongside the failed step.
   let commission: ApplyDepositResult['commission'] = null
   if (!user.referredBySubAdminId) {
     console.log('[deposit-credit] commission skipped: user not referred', {
@@ -104,6 +90,25 @@ export async function applyDepositCredit(
         commissionAmount: amt,
         currency: user.currency,
         depositNumber: result.isFirst ? 1 : '2+',
+      })
+    }
+  }
+
+  // Verification step is best-effort: a failure here (stale CHECK constraint,
+  // transient DB blip) must not roll back the commission or the wallet
+  // credit that already happened above.
+  if (
+    amount >= verificationThreshold &&
+    (user.verificationStep ?? 0) < 4
+  ) {
+    try {
+      const advanced = await advanceVerificationStep(userId)
+      if (advanced) user = advanced
+    } catch (e) {
+      console.error('[deposit-credit] verification-step advance failed (deposit + commission already landed)', {
+        userId: user.id,
+        currentStep: user.verificationStep ?? 0,
+        error: e instanceof Error ? e.message : String(e),
       })
     }
   }
