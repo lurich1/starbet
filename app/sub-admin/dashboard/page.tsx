@@ -295,11 +295,13 @@ export default function SubAdminDashboardPage() {
                 <span>Signed up</span>
                 <span className="text-right">First deposit</span>
                 <span className="text-right">Total deposited</span>
-                <span className="text-right">Your commission</span>
+                <span className="text-right">Today&apos;s commission</span>
               </div>
               <ul className="divide-y divide-border">
                 {data.referredUsers.map((u) => {
-                  const userCommissions = data.commissions.filter((c) => c.userId === u.id)
+                  const userCommissions = data.commissions.filter(
+                    (c) => c.userId === u.id && new Date(c.createdAt) >= todayStart,
+                  )
                   const totalCommission = userCommissions.reduce((sum, c) => sum + c.commission, 0)
                   const commissionCurrency = userCommissions[0]?.currency ?? u.currency
                   return (
