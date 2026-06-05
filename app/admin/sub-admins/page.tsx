@@ -197,7 +197,7 @@ export default function AdminSubAdminsPage() {
         <h1 className="text-title font-bold tracking-tight">Sub-admins (Partners)</h1>
         <p className="text-sm text-muted-foreground">
           Partners self-register at{' '}
-          <code className="font-mono text-xs px-1.5 py-0.5 rounded bg-secondary">/sub-admin/register</code>. They earn 75% on
+          <code className="font-mono text-xs px-1.5 py-0.5 rounded bg-secondary">/sub-admin/register</code>. They earn 70% on
           every deposit from each referred user.
         </p>
       </div>
@@ -223,8 +223,8 @@ export default function AdminSubAdminsPage() {
               <tr className="text-[10px] uppercase tracking-wide text-muted-foreground">
                 <th className="text-left font-semibold py-1.5">Currency</th>
                 <th className="text-right font-semibold py-1.5">Referred deposits</th>
-                <th className="text-right font-semibold py-1.5">Sub-admin 75%</th>
-                <th className="text-right font-semibold py-1.5">Admin 25%</th>
+                <th className="text-right font-semibold py-1.5">Sub-admin 70%</th>
+                <th className="text-right font-semibold py-1.5">Admin 30%</th>
                 <th className="text-right font-semibold py-1.5">Outstanding</th>
               </tr>
             </thead>

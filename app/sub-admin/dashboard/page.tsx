@@ -10,7 +10,6 @@ import {
   LogOut,
   Loader2,
   Users,
-  TrendingUp,
   Wallet,
   AlertTriangle,
 } from 'lucide-react'
@@ -212,7 +211,7 @@ export default function SubAdminDashboardPage() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                Earn <b>75%</b> commission on every deposit from each referred user.
+                Earn <b>70%</b> commission on every deposit from each referred user.
               </p>
             </div>
             <div className="flex-1 lg:max-w-md">
@@ -250,22 +249,12 @@ export default function SubAdminDashboardPage() {
         </section>
 
         {/* KPI tiles */}
-        <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Kpi
             icon={<Users className="w-4 h-4 text-primary" />}
             label="Referrals"
             value={data.stats.referrals.toString()}
             sub={`${data.stats.withDeposit} with deposit`}
-          />
-          <Kpi
-            icon={<TrendingUp className="w-4 h-4 text-success" />}
-            label="Conversion"
-            value={
-              data.stats.referrals > 0
-                ? `${Math.round((data.stats.withDeposit / data.stats.referrals) * 100)}%`
-                : '—'
-            }
-            sub="signups → first deposit"
           />
           <Kpi
             icon={<Wallet className="w-4 h-4 text-success" />}
