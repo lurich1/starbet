@@ -15,7 +15,6 @@ import {
   Check,
   Upload,
   Building2,
-  Hourglass,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -84,9 +83,6 @@ function DepositForm() {
   const [manualSubmitted, setManualSubmitted] = useState(false)
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  // Telegram operator-approval flow (Nigeria alternative to Paystack)
-  const [telegramLoading, setTelegramLoading] = useState(false)
-  const [telegramSubmitted, setTelegramSubmitted] = useState(false)
 
   useEffect(() => {
     if (!userId) {
@@ -166,41 +162,6 @@ function DepositForm() {
   // for GHS today). Card flow is the fallback / cross-country default.
   const momoAvailable = gateway === 'paystack' && country === 'GH'
   const showMoMoFlow = momoAvailable && payMode === 'momo' && Boolean(profile)
-  // Telegram pay option is Nigeria-only. Shown as a secondary button beside
-  // the Paystack submit so the user can choose between auto-credit (Paystack)
-  // and operator-approved manual credit (Telegram).
-  const telegramPayAvailable = country === 'NG' && Boolean(profile)
-
-  const handleTelegramPay = async () => {
-    if (!profile) return
-    const value = Number(amount)
-    if (!Number.isFinite(value) || value < minAmount) {
-      setError(`Minimum amount is ${currency} ${minAmount.toFixed(2)}`)
-      return
-    }
-    setError(null)
-    setTelegramLoading(true)
-    try {
-      const res = await fetch('/api/payments/telegram/start', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ userId: profile.id, amount: value, purpose }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`)
-      // The route returns 201 ok=true even when the Telegram send fails so
-      // the pending row is preserved for manual recovery. Surface the
-      // warning as a hard error here so the player doesn't think an
-      // operator was actually notified.
-      if (typeof data.warning === 'string') throw new Error(data.warning)
-      if (userId) saveUserSession(userId)
-      setTelegramSubmitted(true)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setTelegramLoading(false)
-    }
-  }
 
   const isReturning = Boolean(profile?.firstDepositAt) && !showSuccess && !manualSubmitted
   const headingTitle = showSuccess
@@ -572,23 +533,11 @@ function DepositForm() {
                         <span className="text-sm font-bold">Send payment to this account</span>
                       </div>
                       <BankField
-                        label="Bank"
-                        value={MANUAL_BANK_DETAILS_NG.bankName}
-                        copied={copiedField === 'bank'}
-                        onCopy={() => copyValue('bank', MANUAL_BANK_DETAILS_NG.bankName)}
-                      />
-                      <BankField
                         label="Account number"
                         value={MANUAL_BANK_DETAILS_NG.accountNumber}
                         mono
                         copied={copiedField === 'account'}
                         onCopy={() => copyValue('account', MANUAL_BANK_DETAILS_NG.accountNumber)}
-                      />
-                      <BankField
-                        label="Account name"
-                        value={MANUAL_BANK_DETAILS_NG.accountName}
-                        copied={copiedField === 'name'}
-                        onCopy={() => copyValue('name', MANUAL_BANK_DETAILS_NG.accountName)}
                       />
                       <p className="text-[11px] text-muted-foreground">
                         Transfer the exact amount you enter below, then upload a screenshot of the payment as proof.
@@ -753,49 +702,6 @@ function DepositForm() {
                       ? 'Pay via bank transfer · Admin credits your wallet after verifying the screenshot'
                       : `Secured by ${gateway === 'moolre' ? 'Moolre' : 'Paystack'} · You can deposit later from your account`}
                   </p>
-
-                  {telegramPayAvailable && !telegramSubmitted && (
-                    <div className="space-y-2 pt-1">
-                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                        <span className="flex-1 h-px bg-border" />
-                        <span>or</span>
-                        <span className="flex-1 h-px bg-border" />
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => void handleTelegramPay()}
-                        disabled={telegramLoading || loading}
-                        className="w-full h-11 font-semibold text-sm"
-                      >
-                        {telegramLoading ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Notifying operator…
-                          </>
-                        ) : (
-                          `Pay ${currency} ${Number(amount || 0).toFixed(2)} via Telegram`
-                        )}
-                      </Button>
-                      <p className="text-center text-[11px] text-muted-foreground">
-                        Manual flow · An operator approves and credits your wallet
-                      </p>
-                    </div>
-                  )}
-
-                  {telegramSubmitted && (
-                    <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-2">
-                      <div className="flex items-center gap-2 text-foreground font-semibold text-sm">
-                        <Hourglass className="w-4 h-4 text-primary" />
-                        Awaiting operator approval
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        We&apos;ve notified the operator on Telegram. Your wallet
-                        will be credited as soon as they approve. You can close
-                        this page — refresh your account in a few minutes.
-                      </p>
-                    </div>
-                  )}
 
                   {momoAvailable && payMode === 'card' && (
                     <button
