@@ -14,6 +14,7 @@ import {
   Copy,
   Check,
   Building2,
+  Hourglass,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -563,31 +564,6 @@ function DepositForm() {
                       <span>{error}</span>
                     </div>
                   )}
-
-                  <div className="p-3 rounded-lg bg-primary/5 border border-primary/15 text-[11px] text-muted-foreground flex items-start gap-2">
-                    <Info className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
-                    <span>
-                      {gateway === 'manual' ? (
-                        <>
-                          Once you tap Pay, an operator confirms your transfer and credits your{' '}
-                          <strong className="text-foreground">wallet</strong> in a few minutes.
-                        </>
-                      ) : gateway === 'moolre' ? (
-                        <>
-                          You&apos;ll be redirected to{' '}
-                          <span className="font-semibold text-foreground">Moolre</span>{' '}
-                          to pay. Your balance is credited within a few minutes of payment — check{' '}
-                          <strong className="text-foreground">My Account</strong> after.
-                        </>
-                      ) : (
-                        <>
-                          The{' '}
-                          <span className="font-semibold text-foreground">Paystack</span>{' '}
-                          checkout opens right here — your balance is credited automatically once the payment confirms.
-                        </>
-                      )}
-                    </span>
-                  </div>
 
                   <Button
                     type="submit"

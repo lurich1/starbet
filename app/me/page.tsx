@@ -24,7 +24,6 @@ import {
   LogOut,
   Copy,
   Check,
-  Info,
 } from 'lucide-react'
 import { MobileNav } from '@/components/mobile-nav'
 import { Button } from '@/components/ui/button'
@@ -760,18 +759,6 @@ function MePageInner() {
                     {verifyError}
                   </p>
                 )}
-                <div className="p-2.5 rounded-lg bg-secondary/60 border border-border text-[11px] text-muted-foreground flex items-start gap-2">
-                  <Info className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
-                  <span>
-                    {countryCfg.gateway === 'manual'
-                      ? 'You\'ll see our bank details and upload your payment proof on the next page. Admin credits your wallet once verified.'
-                      : countryCfg.gateway === 'moolre'
-                        ? 'You\'ll be redirected to Moolre to pay. Your balance is credited within a few minutes of payment.'
-                        : country === 'GH'
-                          ? 'Pay instantly with MTN MoMo, Telecel Cash or AirtelTigo Money — your wallet is credited automatically once you approve.'
-                          : 'The Paystack checkout opens right here. Your balance is credited automatically once the payment confirms.'}
-                  </span>
-                </div>
                 {countryCfg.gateway === 'paystack' && country === 'GH' ? (
                   <MobileMoneyForm
                     userId={profile.id}
