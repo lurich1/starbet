@@ -26,3 +26,6 @@ dev.log
 # Local asset source kits / large media (not for the repo)
 kenney_*/
 supabase/migrations/*.mp4
+
+# Saved third-party site (review/marketing copy) — not part of the app
+playtowerrush.com/

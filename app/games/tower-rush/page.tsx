@@ -320,13 +320,15 @@ export default function TowerRushPage() {
       <main className="flex-1 w-full max-w-[1100px] mx-auto p-3 sm:p-4 flex flex-col lg:flex-row gap-4">
         {/* ===================== GAME STAGE ===================== */}
         <section className="relative flex-1 rounded-2xl overflow-hidden border border-black/30 shadow-2xl min-h-[460px]">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#7ec8f0] via-[#a9dcf5] to-[#e9d9b8]" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#6fb1d6] via-[#c3dbe0] to-[#f3c886]" />
           {/* The higher the tower climbs, the deeper the sky turns. */}
           <div
             className="absolute inset-0 bg-gradient-to-b from-[#06204a] to-[#0a3a6e] pointer-events-none"
             style={{ opacity: Math.min(floor / 16, 1) * 0.7, transition: 'opacity .4s ease-out' }}
           />
-          <div className="absolute left-1/2 -translate-x-1/2 bottom-24 w-40 h-40 rounded-full bg-yellow-200/70 blur-2xl" />
+          {/* Warm sunset glow behind the storefront */}
+          <div className="absolute left-1/2 -translate-x-1/2 bottom-16 w-64 h-44 rounded-full bg-amber-300/70 blur-3xl pointer-events-none" />
+          <div className="absolute left-1/2 -translate-x-1/2 bottom-20 w-28 h-28 rounded-full bg-orange-200/80 blur-2xl pointer-events-none" />
 
           {TOWER_BG_IMAGE ? (
             <Image src={TOWER_BG_IMAGE} alt="" fill priority className="object-cover object-bottom z-0" />
@@ -589,20 +591,28 @@ function Building({
   )
 }
 
-// The green "Tower Rush" storefront — the base the tower is built on.
+// The green storefront — the lit base the tower is built on.
 function Shop() {
   return (
-    <div className="flex flex-col items-center drop-shadow-[0_6px_6px_rgba(0,0,0,0.25)]">
-      {/* Striped awning + sign */}
-      <div className="relative">
-        <div className="h-3 w-32 rounded-t-md" style={{ background: 'repeating-linear-gradient(90deg,#b8362c 0 9px,#f3efe6 9px 18px)' }} />
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] font-extrabold text-[#fff2cf] bg-[#7a4a1e] px-2 rounded border border-[#3a2410]">Tower&nbsp;Rush</div>
+    <div className="relative flex flex-col items-center drop-shadow-[0_8px_8px_rgba(0,0,0,0.3)]">
+      {/* Glowing hanging sign */}
+      <div className="relative z-10 -mb-0.5">
+        <div className="px-2.5 py-0.5 rounded text-[10px] font-extrabold tracking-wide text-[#3a2a00] bg-gradient-to-b from-[#ffe07a] to-[#f4b836] border border-[#8a5a16] shadow-[0_0_12px_3px_rgba(244,184,54,0.6)]">
+          TOWER&nbsp;RUSH
+        </div>
       </div>
-      {/* Storefront */}
-      <div className="w-32 h-16 bg-[#2f6b4f] border-x-4 border-b-4 border-[#234f3b] rounded-b-sm flex items-end justify-center gap-1.5 px-2 relative">
-        <div className="absolute inset-x-1 top-1 h-5 rounded-sm bg-[#8fd0b2]/40 border border-[#234f3b]/60" />
-        <div className="w-7 h-9 bg-[#1c3d2e] rounded-t-sm border border-[#163026]" />
-        <div className="w-5 h-7 bg-[#8fd0b2]/50 rounded-sm border border-[#234f3b]/60 mb-0" />
+      {/* Cornice */}
+      <div className="h-2 w-36 rounded-t-sm bg-[#1f4a37] border-x-2 border-t-2 border-[#163528]" />
+      {/* Storefront body */}
+      <div className="w-36 h-20 bg-gradient-to-b from-[#357a59] to-[#245540] border-x-4 border-b-4 border-[#173a2c] rounded-b-sm flex items-end justify-center gap-2 px-2.5 relative">
+        {/* warm interior glow through the glass */}
+        <div className="absolute inset-x-1.5 top-1.5 h-8 rounded-sm bg-gradient-to-b from-[#ffe9b0]/70 to-[#f3b85a]/30 border border-[#173a2c]/50" />
+        {/* door */}
+        <div className="relative w-9 h-12 bg-gradient-to-b from-[#2a5743] to-[#1a3a2c] rounded-t-sm border border-[#143025]">
+          <div className="absolute right-1 top-1/2 w-1 h-1 rounded-full bg-[#ffe07a]" />
+        </div>
+        {/* window */}
+        <div className="w-7 h-9 bg-[#ffe9b0]/55 rounded-sm border border-[#173a2c]/60 mb-0" />
       </div>
     </div>
   )
@@ -614,17 +624,17 @@ function Shop() {
 function Skyline() {
   return (
     <div className="absolute bottom-0 left-0 right-0 h-56 z-0 pointer-events-none">
-      {/* Distant skyline */}
-      <Building left="2%" width={70} height={120} bottom={70} color="#cfc7ba" cols={3} rows={4} shadow={false} />
-      <Building left="12%" width={54} height={92} bottom={70} color="#d8d1c5" cols={2} rows={3} shadow={false} />
-      <Building left="80%" width={64} height={110} bottom={70} color="#d2cabd" cols={3} rows={4} shadow={false} />
-      <Building left="90%" width={60} height={88} bottom={70} color="#c7bfb2" cols={2} rows={3} shadow={false} />
+      {/* Distant skyline (hazy, warm) */}
+      <Building left="2%" width={74} height={128} bottom={74} color="#b9aebd" cols={3} rows={4} shadow={false} />
+      <Building left="14%" width={58} height={98} bottom={74} color="#c7b9a2" cols={2} rows={3} shadow={false} />
+      <Building left="78%" width={70} height={120} bottom={74} color="#bdb0bf" cols={3} rows={4} shadow={false} />
+      <Building left="90%" width={62} height={94} bottom={74} color="#c2b39c" cols={2} rows={3} shadow={false} />
 
       {/* Front storefronts (left & right of the shop) */}
-      <Building left="0%" width={120} height={88} bottom={40} color="#bfc6cc" cols={3} rows={2} />
-      <Building left="20%" width={70} height={70} bottom={40} color="#c9b79b" cols={2} rows={2} awning awningColor="#caa24a" />
-      <Building left="70%" width={84} height={96} bottom={40} color="#b8a7c4" cols={3} rows={3} awning awningColor="#b8362c" />
-      <Building left="88%" width={96} height={78} bottom={40} color="#c5b59a" cols={3} rows={2} awning awningColor="#caa24a" />
+      <Building left="-2%" width={132} height={104} bottom={40} color="#a9b0bb" cols={3} rows={3} />
+      <Building left="20%" width={78} height={80} bottom={40} color="#c2ab84" cols={2} rows={2} awning awningColor="#caa24a" />
+      <Building left="68%" width={92} height={112} bottom={40} color="#a594b6" cols={3} rows={3} awning awningColor="#b8362c" />
+      <Building left="88%" width={108} height={86} bottom={40} color="#bda685" cols={3} rows={2} awning awningColor="#caa24a" />
 
       {/* Lamp post (left of centre) */}
       <div className="absolute" style={{ left: '40%', bottom: 40 }}>
