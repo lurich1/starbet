@@ -248,10 +248,10 @@ export default function TowerRushPage() {
     <div className="min-h-screen bg-[#0e1726] text-white flex flex-col">
       <style>{`
         @keyframes tr-drop { from { transform: translateY(-40px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
-        @keyframes tr-sway { 0%,100% { transform: rotate(-3deg) } 50% { transform: rotate(3deg) } }
+        @keyframes tr-sway { 0%,100% { transform: translateX(-26px) rotate(-7deg) } 50% { transform: translateX(26px) rotate(7deg) } }
         @keyframes tr-fall { to { transform: translateY(420px) rotate(80deg); opacity: 0 } }
         .tr-block-in { animation: tr-drop .28s ease-out }
-        .tr-sway { animation: tr-sway 1.4s ease-in-out infinite; transform-origin: top center }
+        .tr-sway { animation: tr-sway var(--sway, 1.1s) ease-in-out infinite; transform-origin: top center }
         .tr-fall { animation: tr-fall .9s ease-in forwards }
       `}</style>
 
@@ -328,8 +328,8 @@ export default function TowerRushPage() {
             <Image src="/tower-logo.png" alt="Tower Rush" width={120} height={120} priority className="w-20 sm:w-24 h-auto drop-shadow-lg" />
           </div>
 
-          {/* Crane + hanging next block */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center">
+          {/* Crane + hanging next block (over the right-side column) */}
+          <div className="absolute top-0 left-[70%] -translate-x-1/2 z-20 flex flex-col items-center">
             <div className="w-40 h-1.5 bg-[#3a4a63] rounded-b" />
             <div className="w-1 h-6 bg-[#2b3850]" />
             {!crashed && (
@@ -350,11 +350,11 @@ export default function TowerRushPage() {
             </div>
           )}
 
-          <div className="absolute left-1/2 -translate-x-1/2 bottom-6 z-10"><Shop /></div>
+          <div className="absolute left-[70%] -translate-x-1/2 bottom-6 z-10"><Shop /></div>
 
-          {/* Stacked tower */}
+          {/* Stacked tower (right-side column) */}
           <div
-            className="absolute left-1/2 z-10"
+            className="absolute left-[70%] z-10"
             style={{ bottom: 86, transform: `translate(-50%, ${scrollOffset}px)`, transition: 'transform .3s ease-out' }}
           >
             {Array.from({ length: floor }).map((_, i) => (
