@@ -500,11 +500,24 @@ export default function TowerRushPage() {
 
 // ---- Presentational bits --------------------------------------------------
 
-// Real game block art. (More variants can be added and cycled by index.)
+// Real game block art. Add more files here and they'll be cycled per floor.
 const TOWER_BLOCK_IMAGES = ['/build-tool-one.png']
 
+// Until we have multiple block sprites, vary the single sprite per floor with
+// subtle, natural tints so the tower doesn't read as the same house repeated.
+const TOWER_BLOCK_TINTS = [
+  'none',
+  'brightness(1.08) saturate(1.05)',
+  'brightness(0.93) saturate(1.12) hue-rotate(-8deg)',
+  'brightness(1.02) saturate(0.92) hue-rotate(10deg)',
+  'brightness(0.97) saturate(1.18) hue-rotate(18deg)',
+]
+
 function BrickBlock({ index = 0 }: { index?: number }) {
-  const src = TOWER_BLOCK_IMAGES[((index % TOWER_BLOCK_IMAGES.length) + TOWER_BLOCK_IMAGES.length) % TOWER_BLOCK_IMAGES.length]
+  const n = TOWER_BLOCK_IMAGES.length
+  const src = TOWER_BLOCK_IMAGES[((index % n) + n) % n]
+  // Only tint when we're repeating a single sprite; real variants get no tint.
+  const tint = n > 1 ? 'none' : TOWER_BLOCK_TINTS[((index % TOWER_BLOCK_TINTS.length) + TOWER_BLOCK_TINTS.length) % TOWER_BLOCK_TINTS.length]
   return (
     <div className="relative" style={{ width: TOWER_BLOCK_W, height: TOWER_BLOCK_H }}>
       <Image
@@ -513,6 +526,7 @@ function BrickBlock({ index = 0 }: { index?: number }) {
         fill
         sizes="96px"
         className="object-contain drop-shadow-[0_3px_3px_rgba(0,0,0,0.35)]"
+        style={{ filter: tint === 'none' ? undefined : tint }}
       />
     </div>
   )
