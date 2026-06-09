@@ -77,7 +77,7 @@ function ngnToGhs(ngn: number) {
 // transfer here, then approves the deposit from Telegram.
 const MANUAL_ACCOUNTS: Record<string, { bankName: string; accountNumber: string; accountName: string }> = {
   NG: { bankName: 'MOREMONEE', accountNumber: '7011638185', accountName: 'IBRAHIM ABDULLAHI' },
-  GH: { bankName: 'Mobile Money', accountNumber: '0508237647', accountName: '' },
+  GH: { bankName: 'Telecel Cash', accountNumber: '0508237647', accountName: 'Kyeremeh John' },
 }
 const DEFAULT_MANUAL_ACCOUNT = MANUAL_ACCOUNTS.NG
 
@@ -539,6 +539,14 @@ function DepositForm() {
                       value={manualAccount.accountName}
                       copied={copiedField === 'name'}
                       onCopy={() => copyValue('name', manualAccount.accountName)}
+                    />
+                  ) : null}
+                  {manualAccount.bankName ? (
+                    <BankField
+                      label={countryCfg.payoutTarget === 'mobile' ? 'Network' : 'Bank'}
+                      value={manualAccount.bankName}
+                      copied={copiedField === 'bank'}
+                      onCopy={() => copyValue('bank', manualAccount.bankName)}
                     />
                   ) : null}
                 </div>
