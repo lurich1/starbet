@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Receipt, X } from 'lucide-react'
+import { Blocks, Goal, Radio, Receipt, Trophy, User, X } from 'lucide-react'
 import type { BetSelection } from '@/lib/types'
 import { BetSlipPanel } from '@/components/bet-slip-panel'
 
@@ -29,44 +29,44 @@ export function MobileNav({
         <div className="flex items-center justify-around py-2">
           <Link
             href="/football"
-            className="flex flex-col items-center gap-1 px-3 py-2 text-muted-foreground hover:text-primary transition-colors"
+            className="flex flex-col items-center gap-1 px-3 py-1.5 text-muted-foreground hover:text-primary transition-colors"
           >
-            <span className="text-lg">⚽</span>
+            <Goal className="w-5 h-5" strokeWidth={2} />
             <span className="text-[11px] font-medium">Football</span>
           </Link>
           <Link
             href="/sports"
-            className="flex flex-col items-center gap-1 px-3 py-2 text-muted-foreground hover:text-primary transition-colors"
+            className="flex flex-col items-center gap-1 px-3 py-1.5 text-muted-foreground hover:text-primary transition-colors"
           >
-            <span className="text-lg">🏆</span>
+            <Trophy className="w-5 h-5" strokeWidth={2} />
             <span className="text-[11px] font-medium">Sports</span>
           </Link>
           <Link
             href="/live"
-            className="flex flex-col items-center gap-1 px-3 py-2 text-muted-foreground hover:text-foreground transition-colors"
+            className="flex flex-col items-center gap-1 px-3 py-1.5 text-muted-foreground hover:text-foreground transition-colors"
           >
             <span className="relative">
-              <span className="text-lg">📺</span>
+              <Radio className="w-5 h-5" strokeWidth={2} />
               <span className="absolute -top-1 -right-1 w-2 h-2 bg-live rounded-full animate-pulse-live" />
             </span>
             <span className="text-[11px] font-medium">Live</span>
           </Link>
           <Link
             href="/games/tower-rush"
-            className="flex flex-col items-center gap-1 px-3 py-2 text-muted-foreground hover:text-primary transition-colors"
+            className="flex flex-col items-center gap-1 px-3 py-1.5 text-muted-foreground hover:text-primary transition-colors"
           >
-            <span className="text-lg">🏗️</span>
+            <Blocks className="w-5 h-5" strokeWidth={2} />
             <span className="text-[11px] font-medium">Tower</span>
           </Link>
           <Link
             href="/me"
-            className={`flex flex-col items-center gap-1 px-3 py-2 transition-colors relative ${
+            className={`flex flex-col items-center gap-1 px-3 py-1.5 transition-colors relative ${
               activeTab === 'me'
                 ? 'text-primary'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            <span className="text-lg">👤</span>
+            <User className="w-5 h-5" strokeWidth={2} />
             {activeTab === 'me' && (
               <span className="absolute top-0 right-2 w-1.5 h-1.5 bg-live rounded-full" />
             )}
