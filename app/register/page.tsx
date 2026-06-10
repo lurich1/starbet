@@ -121,7 +121,7 @@ function RegisterForm() {
           <div aria-hidden className="absolute -top-16 -left-12 w-56 h-56 rounded-full bg-primary/20 blur-3xl pointer-events-none" />
           <div aria-hidden className="absolute -bottom-16 -right-12 w-56 h-56 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
 
-          <div className="relative bg-card rounded-2xl border border-border p-6 sm:p-8 shadow-card">
+          <div className="relative bg-card rounded-2xl border border-border p-6 sm:p-8 shadow-card ring-1 ring-primary/10">
             <div className="text-center mb-6">
               <h1 className="text-title font-bold text-foreground mb-1.5 tracking-tight">Create account</h1>
               <p className="text-muted-foreground text-sm">
@@ -362,7 +362,7 @@ function RegisterForm() {
               <Button
                 type="submit"
                 disabled={loading || !acceptTerms}
-                className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-sm shadow-card hover:shadow-card-hover hover:-translate-y-0.5 active:translate-y-0 transition-all"
+                className="w-full h-12 bg-gradient-to-b from-primary to-primary/85 text-primary-foreground hover:brightness-110 font-bold text-sm shadow-lg shadow-primary/25 hover:-translate-y-0.5 active:translate-y-0 transition-all"
               >
                 {loading ? (
                   <>

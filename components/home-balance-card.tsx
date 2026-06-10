@@ -112,44 +112,45 @@ export function HomeBalanceCard() {
   const depositHref = `/users/first-deposit?userId=${userId}`
 
   return (
-    <section className="relative mb-4 rounded-2xl bg-gradient-to-br from-card via-card to-secondary/30 border border-border shadow-card overflow-hidden">
-      {/* Decorative brand glow — sits behind content, subtle */}
-      <div
-        aria-hidden
-        className="absolute -right-12 -top-12 w-48 h-48 rounded-full bg-primary/10 blur-3xl"
-      />
+    <section className="relative mb-4 rounded-2xl border border-primary/30 shadow-lg shadow-primary/20 overflow-hidden text-white bg-gradient-to-br from-primary via-[#6d28d9] to-[#3b1378]">
+      {/* Decorative glow blobs */}
+      <div aria-hidden className="absolute -right-12 -top-14 w-52 h-52 rounded-full bg-white/15 blur-3xl" />
+      <div aria-hidden className="absolute -left-16 -bottom-16 w-52 h-52 rounded-full bg-fuchsia-400/20 blur-3xl" />
+      {/* Subtle dot texture */}
+      <div aria-hidden className="absolute inset-0 opacity-[0.07]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '16px 16px' }} />
+
       <div className="relative p-5 sm:p-6">
         <div className="flex items-start justify-between gap-4 mb-5">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1.5">
-              <p className="text-eyebrow text-muted-foreground">Total Balance</p>
+              <p className="text-eyebrow text-white/70">Total Balance</p>
               <button
                 type="button"
                 onClick={() => setHidden((v) => !v)}
-                className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                className="p-1 rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors"
                 aria-label={hidden ? 'Show balance' : 'Hide balance'}
               >
                 {hidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
               </button>
             </div>
             <div className="flex items-baseline gap-2 min-w-0">
-              <span className="text-sm font-bold text-muted-foreground tabular-nums">
+              <span className="text-sm font-bold text-white/70 tabular-nums">
                 {currency}
               </span>
               <span
                 key={flashKey}
-                className="text-display font-black tabular-nums truncate rounded-md px-1 -mx-1 animate-value-flash"
+                className="text-display font-black tabular-nums truncate rounded-md px-1 -mx-1 animate-value-flash drop-shadow"
               >
                 {hidden ? '••••••' : formatMoney(balance, currency)}
               </span>
             </div>
-            <p className="text-xs text-muted-foreground mt-1.5 truncate">
-              Hi, <span className="text-foreground font-semibold">{profile?.name ?? 'Player'}</span>
+            <p className="text-xs text-white/70 mt-1.5 truncate">
+              Hi, <span className="text-white font-semibold">{profile?.name ?? 'Player'}</span>
             </p>
           </div>
           <Link
             href="/me"
-            className="hidden sm:inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 shrink-0"
+            className="hidden sm:inline-flex items-center gap-1 text-xs font-medium text-white/90 hover:text-white shrink-0"
           >
             Account <ArrowRight className="w-3 h-3" />
           </Link>
@@ -158,14 +159,14 @@ export function HomeBalanceCard() {
         <div className="grid grid-cols-2 gap-2 sm:gap-3">
           <Link
             href={depositHref}
-            className="group/btn relative inline-flex items-center justify-center gap-2 h-12 rounded-xl bg-primary text-primary-foreground font-bold text-sm shadow-card hover:shadow-card-hover hover:-translate-y-0.5 active:translate-y-0 transition-all"
+            className="group/btn relative inline-flex items-center justify-center gap-2 h-12 rounded-xl bg-white text-primary font-bold text-sm shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all"
           >
             <Wallet className="w-4 h-4 transition-transform group-hover/btn:scale-110" />
             Deposit
           </Link>
           <Link
             href="/me?withdraw=1"
-            className="inline-flex items-center justify-center gap-2 h-12 rounded-xl border-2 border-primary text-primary font-bold text-sm hover:bg-primary/10 transition-colors"
+            className="inline-flex items-center justify-center gap-2 h-12 rounded-xl border-2 border-white/40 text-white font-bold text-sm hover:bg-white/10 transition-colors"
           >
             <Banknote className="w-4 h-4" />
             Withdraw
