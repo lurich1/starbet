@@ -52,7 +52,7 @@ export async function getAccessToken(): Promise<string> {
     return cachedToken.value
   }
 
-  const res = await fetch(TOKEN_URL, {
+  const res = await flwFetch(TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -86,6 +86,41 @@ function authedHeaders(token: string): Record<string, string> {
     'X-Trace-Id': crypto.randomUUID(),
     'X-Idempotency-Key': crypto.randomUUID(),
   }
+}
+
+// Fetch with a hard timeout and a couple of retries on transient gateway
+// errors (502/503/504) or network hiccups, so a slow Flutterwave response
+// doesn't immediately hard-fail the customer's payment.
+async function flwFetch(
+  url: string,
+  init: RequestInit,
+  opts: { timeoutMs?: number; retries?: number } = {},
+): Promise<Response> {
+  const timeoutMs = opts.timeoutMs ?? 25_000
+  const retries = opts.retries ?? 2
+  let lastErr: unknown
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs)
+    try {
+      const res = await fetch(url, { ...init, signal: ctrl.signal })
+      // Retry transient gateway errors; return anything else to the caller.
+      if ((res.status === 502 || res.status === 503 || res.status === 504) && attempt < retries) {
+        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)))
+        continue
+      }
+      return res
+    } catch (e) {
+      lastErr = e
+      if (attempt < retries) {
+        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)))
+        continue
+      }
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error('flutterwave request failed')
 }
 
 // ---- Charge shapes --------------------------------------------------------
@@ -137,7 +172,7 @@ export async function createCharge(input: CreateChargeInput): Promise<Flutterwav
     payment_method: input.paymentMethod,
     meta: input.meta ?? {},
   }
-  const res = await fetch(url, {
+  const res = await flwFetch(url, {
     method: 'POST',
     headers: authedHeaders(token),
     body: JSON.stringify(requestBody),
@@ -172,7 +207,7 @@ export async function createCharge(input: CreateChargeInput): Promise<Flutterwav
 /** Retrieve a charge by its Flutterwave id to confirm final status. */
 export async function retrieveCharge(id: string): Promise<FlutterwaveCharge> {
   const token = await getAccessToken()
-  const res = await fetch(`${baseUrl()}/charges/${encodeURIComponent(id)}`, {
+  const res = await flwFetch(`${baseUrl()}/charges/${encodeURIComponent(id)}`, {
     method: 'GET',
     headers: authedHeaders(token),
     cache: 'no-store',
