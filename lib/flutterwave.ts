@@ -23,6 +23,18 @@ export function getPublicKey(): string | null {
   return process.env.FLUTTERWAVE_PUBLIC_KEY?.trim() || null
 }
 
+/** Secret hash configured on the Flutterwave webhook (sent as `verif-hash`). */
+export function getWebhookSecret(): string | null {
+  return process.env.FLUTTERWAVE_WEBHOOK_SECRET?.trim() || null
+}
+
+/** Validate the `verif-hash` header. Fails closed if no secret is configured. */
+export function isValidWebhookSignature(headerValue: string | null): boolean {
+  const secret = getWebhookSecret()
+  if (!secret) return false
+  return headerValue === secret
+}
+
 function authHeaders(): Record<string, string> {
   return {
     Authorization: `Bearer ${getSecretKey()}`,

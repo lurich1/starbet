@@ -5,7 +5,7 @@
 // Flutterwave with verify_by_reference. `credit: false` is used by the
 // withdrawal-fee flow — the fee is verified but never added to the wallet.
 
-import { findPaymentByReference, markPaymentResolved } from '@/lib/payments-store'
+import { findPaymentByReference, markPaymentResolved, updatePayment } from '@/lib/payments-store'
 import { verifyByReference, isChargeSuccessful } from '@/lib/flutterwave'
 import { applyDepositCredit } from '@/lib/deposit-credit'
 
@@ -54,18 +54,21 @@ export async function verifyAndCreditFlutterwave(
     return { status: 'no-user', ok: false, reference }
   }
 
-  try {
-    const resolved = await markPaymentResolved(pending.id, 'flutterwave verified')
-    if (!resolved) {
-      // Another path already resolved this reference.
-      return { status: 'already-credited', ok: true, reference }
-    }
-    if (opts.credit && pending.userId) {
+  const resolved = await markPaymentResolved(pending.id, 'flutterwave verified')
+  if (!resolved) {
+    // Another path already resolved this reference.
+    return { status: 'already-credited', ok: true, reference }
+  }
+  if (opts.credit && pending.userId) {
+    try {
       await applyDepositCredit(pending.userId, pending.amount)
+    } catch (e) {
+      console.error('[flutterwave-credit] credit failed after resolve, reverting:', e)
+      // Put the row back to pending so the next poll/webhook retries the credit
+      // instead of short-circuiting to 'already-credited' forever.
+      await updatePayment(pending.id, { status: 'pending' }).catch(() => null)
+      return { status: 'credit-failed', ok: false, reference }
     }
-  } catch (e) {
-    console.error('[flutterwave-credit] credit pipeline failed:', e)
-    return { status: 'credit-failed', ok: false, reference }
   }
 
   return { status: 'success', ok: true, reference }
