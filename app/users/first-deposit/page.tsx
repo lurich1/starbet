@@ -32,7 +32,6 @@ import {
   type CountryCode,
   type CurrencyCode,
 } from '@/lib/countries'
-import { openPaystackPopup } from '@/lib/paystack-inline'
 import { MobileMoneyForm } from '@/components/payments/mobile-money-form'
 
 interface UserProfile {
@@ -95,7 +94,7 @@ function DepositForm() {
   const userId = params.get('userId') ?? ''
   const moolreStatus = params.get('moolre')
   const moolreReason = params.get('reason')
-  const paystackStatus = params.get('paystack')
+  const flwStatus = params.get('flw')
   const purposeParam = params.get('purpose')
   const purpose: 'deposit' | 'verification' =
     purposeParam === 'verification' ? 'verification' : 'deposit'
@@ -153,7 +152,7 @@ function DepositForm() {
   // session and flip the page to the success card; on failure we surface the
   // reason (without clearing the form).
   useEffect(() => {
-    if (moolreStatus === 'success' || paystackStatus === 'success' || paystackStatus === 'already-credited') {
+    if (moolreStatus === 'success' || flwStatus === 'success' || flwStatus === 'already-credited') {
       if (userId) saveUserSession(userId)
       setShowSuccess(true)
       return
@@ -166,10 +165,10 @@ function DepositForm() {
       )
       return
     }
-    if (paystackStatus && paystackStatus !== 'success' && paystackStatus !== 'already-credited') {
-      setError(`Payment did not complete (${paystackStatus}). Try again or contact support.`)
+    if (flwStatus && flwStatus !== 'success' && flwStatus !== 'already-credited') {
+      setError(`Payment did not complete (${flwStatus}). Try again or contact support.`)
     }
-  }, [moolreStatus, moolreReason, paystackStatus, userId])
+  }, [moolreStatus, moolreReason, flwStatus, userId])
 
   // Country / currency derived from the loaded profile, with safe defaults.
   const country: CountryCode = isCountryCode(profile?.country) ? profile!.country as CountryCode : DEFAULT_COUNTRY
@@ -255,10 +254,7 @@ function DepositForm() {
 
     setLoading(true)
     try {
-      const endpoint = gateway === 'moolre'
-        ? '/api/payments/moolre/start'
-        : '/api/payments/paystack/start'
-      const res = await fetch(endpoint, {
+      const res = await fetch('/api/payments/flutterwave/start', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -266,60 +262,20 @@ function DepositForm() {
           amount: amt,
           purpose,
           returnPath: `/users/first-deposit?userId=${profile.id}`,
+          // Mobile-money countries need a phone + network for the charge.
+          phone: profile.phone ?? undefined,
+          network: countryCfg.payoutNetworks[0]?.key,
         }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         throw new Error(data.error ?? `HTTP ${res.status}`)
       }
-
-      // Paystack: open the Inline JS popup so card collection happens in
-      // Paystack's iframe (no PCI scope for us) without leaving the page.
-      // Moolre still uses the legacy full-page redirect.
-      if (gateway === 'paystack') {
-        if (!data.publicKey) {
-          throw new Error('Paystack public key not configured on server')
-        }
-        await openPaystackPopup({
-          publicKey: data.publicKey,
-          email: data.email,
-          amountMinor: data.amountMinor,
-          reference: data.reference,
-          currency: data.currency,
-          metadata: { userId: profile.id, purpose },
-          onSuccess: async (reference) => {
-            try {
-              const vres = await fetch('/api/payments/paystack/verify', {
-                method: 'POST',
-                headers: { 'content-type': 'application/json' },
-                body: JSON.stringify({ reference }),
-              })
-              const vdata = await vres.json().catch(() => ({}))
-              if (!vres.ok || !vdata.ok) {
-                setError(
-                  `Payment received but verification failed (${vdata.status ?? vres.status}). Refresh your account in a moment.`,
-                )
-                setLoading(false)
-                return
-              }
-              await handleDepositSuccess()
-            } catch (err) {
-              setError(err instanceof Error ? err.message : String(err))
-              setLoading(false)
-            }
-          },
-          onClose: () => {
-            setLoading(false)
-          },
-        })
-        return
+      // Flutterwave hosts the rest of the payment — redirect the customer.
+      if (!data.redirectUrl) {
+        throw new Error('Could not start the payment. Please try again.')
       }
-
-      // Moolre flow keeps the redirect for now.
-      if (!data.url) {
-        throw new Error('gateway did not return a redirect URL')
-      }
-      window.location.href = data.url as string
+      window.location.href = data.redirectUrl as string
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
       setLoading(false)
@@ -807,7 +763,7 @@ function DepositForm() {
                     </>
                   ) : (
                     <p className="text-center text-[11px] text-muted-foreground">
-                      Secured by {gateway === 'moolre' ? 'Moolre' : 'Paystack'} · You can deposit later from your account
+                      Secured by {gateway === 'moolre' ? 'Moolre' : 'Flutterwave'} · You can deposit later from your account
                     </p>
                   )}
 

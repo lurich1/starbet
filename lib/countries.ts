@@ -6,7 +6,7 @@
 
 export type CountryCode = 'GH' | 'NG' | 'KE' | 'ZA'
 export type CurrencyCode = 'GHS' | 'NGN' | 'KES' | 'ZAR'
-export type Gateway = 'moolre' | 'paystack' | 'manual'
+export type Gateway = 'moolre' | 'paystack' | 'manual' | 'flutterwave'
 
 export interface PayoutNetwork {
   key: string
@@ -62,7 +62,7 @@ const COUNTRIES: Record<CountryCode, CountryConfig> = {
     minFirstDeposit: 200,
     verificationAmount: 200,
     withdrawalFee: 620,
-    gateway: 'paystack',
+    gateway: 'flutterwave',
     payoutTarget: 'mobile',
     payoutNetworks: [
       { key: 'mtn', label: 'MTN MoMo' },
@@ -85,7 +85,7 @@ const COUNTRIES: Record<CountryCode, CountryConfig> = {
     minFirstDeposit: 30000,
     verificationAmount: 30000,
     withdrawalFee: 620,
-    gateway: 'paystack',
+    gateway: 'flutterwave',
     payoutTarget: 'bank',
     payoutNetworks: [
       { key: 'bank', label: 'Bank account' },
@@ -106,7 +106,7 @@ const COUNTRIES: Record<CountryCode, CountryConfig> = {
     minFirstDeposit: 2500,
     verificationAmount: 2500,
     withdrawalFee: 620,
-    gateway: 'paystack',
+    gateway: 'flutterwave',
     payoutTarget: 'mobile',
     payoutNetworks: [
       { key: 'mpesa', label: 'M-Pesa' },
@@ -128,7 +128,7 @@ const COUNTRIES: Record<CountryCode, CountryConfig> = {
     minFirstDeposit: 350,
     verificationAmount: 350,
     withdrawalFee: 620,
-    gateway: 'paystack',
+    gateway: 'flutterwave',
     payoutTarget: 'bank',
     payoutNetworks: [
       { key: 'bank', label: 'Bank account' },

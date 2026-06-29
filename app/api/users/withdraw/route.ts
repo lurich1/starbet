@@ -1,13 +1,28 @@
 import { NextResponse } from 'next/server'
-import { findUserById, recordWithdrawal, setUserPhone } from '@/lib/users-store'
-import { recordPayment, findPaymentByReference, listPaymentsForUser } from '@/lib/payments-store'
+import { findUserById, setUserPhone } from '@/lib/users-store'
+import { recordPayment } from '@/lib/payments-store'
 import { getCountry, getVerificationAmount, getWithdrawalFee, normalizePhone } from '@/lib/countries'
+import { createCharge, paymentMethodForCountry } from '@/lib/flutterwave'
 
 export const dynamic = 'force-dynamic'
 
-const PROCESSING_MESSAGE =
-  'Your withdrawal request has been received and is being processed. We will notify you shortly.'
+function originFromRequest(req: Request): string {
+  const explicit = process.env.NEXT_PUBLIC_APP_URL?.trim()
+  if (explicit) return explicit.replace(/\/$/, '')
+  const url = new URL(req.url)
+  return `${url.protocol}//${url.host}`
+}
 
+function splitName(name: string): { first: string; last: string } {
+  const parts = name.trim().split(/\s+/)
+  return { first: parts[0] || 'Customer', last: parts.slice(1).join(' ') || '-' }
+}
+
+// Withdrawals are fee-gated. Instead of moving money immediately, this route
+// validates the request, then opens a Flutterwave charge for the non-refundable
+// withdrawal fee with the full withdrawal request stashed on the payment row.
+// Once the customer pays the fee, /api/payments/flutterwave/callback finalizes
+// the withdrawal (see finalizeWithdrawalFromFee there).
 export async function POST(request: Request) {
   let body: {
     userId?: string
@@ -18,8 +33,6 @@ export async function POST(request: Request) {
     accountNumber?: string
     /** Bank name shown to the operator processing the payout. */
     bankName?: string
-    /** Reference of the Paystack withdrawal-fee payment that unlocks this request. */
-    feeReference?: string
   }
   try {
     body = await request.json()
@@ -55,6 +68,7 @@ export async function POST(request: Request) {
   // require an account number + bank name. Save whichever the user supplied
   // on the payment metadata so the operator can process the payout.
   let payoutMeta: Record<string, unknown> = { network }
+  let momoPhone: string | undefined
   if (cfg.payoutTarget === 'mobile') {
     const phone = normalizePhone(user.country, body.phone ?? '')
     if (!phone) {
@@ -63,6 +77,7 @@ export async function POST(request: Request) {
         { status: 400 },
       )
     }
+    momoPhone = phone
     payoutMeta = { ...payoutMeta, phone }
     // Cache the canonical phone on the user for next time.
     if (phone !== user.phone) {
@@ -103,118 +118,71 @@ export async function POST(request: Request) {
     )
   }
 
-  // Require a paid, single-use Paystack withdrawal fee before the request is
-  // accepted. The fee is non-refundable and is not credited to the wallet.
-  const feeReference = (body.feeReference ?? '').trim()
+  // Pre-check the balance so the customer isn't charged a fee for a withdrawal
+  // that would bounce (the actual deduction happens after the fee is paid).
+  if (amount > (user.balance ?? 0)) {
+    return NextResponse.json({ error: 'insufficient funds' }, { status: 400 })
+  }
+  if (!user.firstDepositAt) {
+    return NextResponse.json({ error: 'make a deposit before withdrawing' }, { status: 400 })
+  }
+
+  // Open the non-refundable withdrawal fee via Flutterwave. The full withdrawal
+  // request rides along on the fee payment row so the callback can finalize it.
   const withdrawalFee = getWithdrawalFee(user.country)
-  if (!feeReference) {
+  const feeReference = `PB-WFEE-${userId.slice(0, 8)}-${Date.now()}`
+  const returnPath = '/me'
+  const redirectUrl = `${originFromRequest(request)}/api/payments/flutterwave/callback?returnPath=${encodeURIComponent(returnPath)}&ref=${encodeURIComponent(feeReference)}`
+  const name = splitName(user.name)
+
+  try {
+    const charge = await createCharge({
+      reference: feeReference,
+      amount: withdrawalFee,
+      currency: user.currency,
+      redirectUrl,
+      customer: { email: user.email, firstName: name.first, lastName: name.last, phone: momoPhone },
+      paymentMethod: paymentMethodForCountry(user.country, { phone: momoPhone, network }),
+      meta: { userId, purpose: 'withdrawal-fee' },
+    })
+
+    await recordPayment({
+      userId,
+      reference: feeReference,
+      amount: withdrawalFee,
+      type: 'deposit',
+      status: 'pending',
+      provider: 'flutterwave',
+      currency: user.currency,
+      metadata: {
+        purpose: 'withdrawal-fee',
+        flwChargeId: charge.id,
+        returnPath,
+        // The withdrawal to execute once the fee clears.
+        withdrawal: {
+          amount: +amount.toFixed(2),
+          payoutMeta,
+          withdrawalApproved: !!user.withdrawalApproved,
+        },
+      },
+    }).catch((e) => console.error('[withdraw] fee ledger write failed:', e))
+
     return NextResponse.json(
       {
-        error: `A non-refundable withdrawal fee of ${user.currency} ${withdrawalFee} is required.`,
         feeRequired: true,
         withdrawalFee,
         currency: user.currency,
+        reference: feeReference,
+        redirectUrl: charge.next_action?.redirect_url?.url ?? null,
+        nextAction: charge.next_action ?? null,
       },
       { status: 402 },
     )
-  }
-
-  const feePayment = await findPaymentByReference(feeReference)
-  const feeValid =
-    feePayment &&
-    feePayment.userId === userId &&
-    feePayment.provider === 'paystack' &&
-    feePayment.metadata?.purpose === 'withdrawal-fee' &&
-    feePayment.status === 'success'
-  if (!feeValid) {
-    return NextResponse.json(
-      { error: 'Withdrawal fee not paid or not verified. Please pay the fee and try again.', feeRequired: true },
-      { status: 402 },
-    )
-  }
-
-  // Single-use: a fee reference can only back one withdrawal request. Reject it
-  // if any earlier withdrawal row already consumed it.
-  const priorPayments = await listPaymentsForUser(userId).catch(() => [])
-  const alreadyConsumed = priorPayments.some(
-    (p) => p.type === 'withdrawal' && p.metadata?.feeReference === feeReference,
-  )
-  if (alreadyConsumed) {
-    return NextResponse.json(
-      { error: 'This withdrawal fee has already been used. Please pay a new fee to withdraw again.', feeRequired: true },
-      { status: 402 },
-    )
-  }
-
-  // Tie the fee to the withdrawal ledger row so it can't be reused.
-  payoutMeta = { ...payoutMeta, feeReference }
-
-  // Even after verification, the admin still has to flip the
-  // withdrawal_approved switch. Externally we present this as "we're
-  // processing your request" so the player isn't stressed by a lock screen.
-  if (!user.withdrawalApproved) {
-    try {
-      await recordPayment({
-        userId,
-        reference: `PB-WDR-${userId.slice(0, 8)}-${Date.now()}`,
-        amount,
-        type: 'withdrawal',
-        status: 'pending',
-        provider: 'manual',
-        currency: user.currency,
-        metadata: payoutMeta,
-      })
-    } catch (e) {
-      console.error('[withdraw] pending payment ledger write failed:', e)
-    }
-    return NextResponse.json(
-      { message: PROCESSING_MESSAGE, pending: true },
-      { status: 202 },
-    )
-  }
-
-  const result = await recordWithdrawal(userId, +amount.toFixed(2))
-  if ('error' in result) {
-    if (result.error === 'not-found') {
-      return NextResponse.json({ error: 'user not found' }, { status: 404 })
-    }
-    if (result.error === 'no-deposit') {
-      return NextResponse.json(
-        { error: 'make a deposit before withdrawing' },
-        { status: 400 },
-      )
-    }
-    return NextResponse.json({ error: 'insufficient funds' }, { status: 400 })
-  }
-
-  try {
-    await recordPayment({
-      userId,
-      reference: `PB-WDR-${userId.slice(0, 8)}-${Date.now()}`,
-      amount,
-      type: 'withdrawal',
-      status: 'success',
-      provider: 'manual',
-      currency: user.currency,
-      metadata: payoutMeta,
-    })
   } catch (e) {
-    console.error('[withdraw] payment ledger write failed:', e)
+    console.error('[withdraw] fee charge failed:', e)
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : 'could not start the withdrawal fee payment' },
+      { status: 502 },
+    )
   }
-
-  return NextResponse.json(
-    {
-      user: {
-        id: result.user.id,
-        name: result.user.name,
-        country: result.user.country,
-        currency: result.user.currency,
-        totalDeposited: result.user.totalDeposited,
-        totalWithdrawn: result.user.totalWithdrawn ?? 0,
-        balance: result.user.balance ?? 0,
-        verificationStep: result.user.verificationStep ?? 0,
-      },
-    },
-    { status: 201 },
-  )
 }

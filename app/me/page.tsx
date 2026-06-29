@@ -47,8 +47,6 @@ import {
   type CountryCode,
   type CurrencyCode,
 } from '@/lib/countries'
-import { openPaystackPopup } from '@/lib/paystack-inline'
-import { MobileMoneyForm } from '@/components/payments/mobile-money-form'
 
 interface UserProfile {
   id: string
@@ -154,24 +152,24 @@ function MePageInner() {
     return () => window.removeEventListener('focus', onFocus)
   }, [loadProfile])
 
-  // Handle the redirect back from Moolre / Paystack. On success we re-fetch
+  // Handle the redirect back from Moolre / Flutterwave. On success we re-fetch
   // the profile so the new balance / verification step are reflected; on
   // failure we surface the reason as a dismissible toast. Strip the query
   // params after handling so a refresh doesn't replay them.
   useEffect(() => {
     const moolre = searchParams.get('moolre')
-    const paystack = searchParams.get('paystack')
-    if (!moolre && !paystack) return
+    const flw = searchParams.get('flw')
+    if (!moolre && !flw) return
     const success =
-      moolre === 'success' || paystack === 'success' || paystack === 'already-credited'
+      moolre === 'success' || flw === 'success' || flw === 'already-credited'
     if (success) {
-      setDepositToast({ kind: 'success', text: 'Deposit credited. Welcome back!' })
+      setDepositToast({ kind: 'success', text: 'Payment received. Welcome back!' })
       void loadProfile()
     } else {
-      const reason = searchParams.get('reason') ?? paystack ?? moolre
+      const reason = searchParams.get('reason') ?? flw ?? moolre
       setDepositToast({
         kind: 'failed',
-        text: reason ? `Deposit failed: ${reason}` : 'Deposit failed. Try again.',
+        text: reason ? `Payment not completed: ${reason}` : 'Payment not completed. Try again.',
       })
     }
     router.replace('/me')
@@ -283,92 +281,30 @@ function MePageInner() {
         network: withdrawNetwork,
       }
     }
-    // Submit the actual withdrawal once the fee has been paid + verified.
-    const finalizeWithdraw = async (feeReference: string) => {
+    setWithdrawLoading(true)
+    try {
+      // The withdraw endpoint validates the request and returns a Flutterwave
+      // redirect URL for the non-refundable withdrawal fee. After the fee is
+      // paid, the callback finalizes the withdrawal server-side.
       const res = await fetch('/api/users/withdraw', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           userId: profile.id,
           amount: amt,
-          feeReference,
           ...payoutBody,
         }),
       })
       const data = await res.json().catch(() => ({}))
+      // The happy path is HTTP 402 (feeRequired) carrying a redirectUrl.
+      if (data.redirectUrl) {
+        window.location.href = data.redirectUrl as string
+        return
+      }
       if (!res.ok) {
         throw new Error(data.error ?? `HTTP ${res.status}`)
       }
-      // 202 = held server-side (admin hasn't approved yet) — show as a
-      // friendly "we're processing" toast and leave the balance alone.
-      if (res.status === 202 || data.pending) {
-        setWithdrawMsg(
-          data.message ??
-            'Your withdrawal request has been received and is being processed. We will notify you shortly.',
-        )
-        setWithdrawAmount('')
-      } else {
-        setProfile((prev) =>
-          prev
-            ? {
-                ...prev,
-                totalWithdrawn: data.user.totalWithdrawn,
-                balance: data.user.balance,
-              }
-            : prev,
-        )
-        setWithdrawMsg(`Withdrew ${currency} ${formatMoney(amt, currency)} successfully.`)
-        setWithdrawAmount('')
-      }
-    }
-
-    setWithdrawLoading(true)
-    try {
-      // Step 1 — collect the non-refundable withdrawal fee via Paystack.
-      const feeRes = await fetch('/api/payments/paystack/withdrawal-fee/start', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ userId: profile.id, returnPath: '/me' }),
-      })
-      const feeData = await feeRes.json().catch(() => ({}))
-      if (!feeRes.ok) {
-        throw new Error(feeData.error ?? `HTTP ${feeRes.status}`)
-      }
-      if (!feeData.publicKey) {
-        throw new Error('Paystack public key not configured on server')
-      }
-
-      await openPaystackPopup({
-        publicKey: feeData.publicKey,
-        email: feeData.email,
-        amountMinor: feeData.amountMinor,
-        reference: feeData.reference,
-        currency: feeData.currency,
-        metadata: { userId: profile.id, purpose: 'withdrawal-fee' },
-        onSuccess: async (reference) => {
-          try {
-            // Step 2 — verify the fee, then submit the withdrawal.
-            const vres = await fetch('/api/payments/paystack/withdrawal-fee/verify', {
-              method: 'POST',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({ reference }),
-            })
-            const vdata = await vres.json().catch(() => ({}))
-            if (!vres.ok || !vdata.ok) {
-              throw new Error(`Fee payment could not be verified (${vdata.status ?? vres.status}).`)
-            }
-            await finalizeWithdraw(reference)
-          } catch (err) {
-            setWithdrawError(err instanceof Error ? err.message : String(err))
-          } finally {
-            setWithdrawLoading(false)
-          }
-        },
-        onClose: () => {
-          setWithdrawError('Withdrawal fee payment was cancelled.')
-          setWithdrawLoading(false)
-        },
-      })
+      throw new Error('Could not start the withdrawal fee payment. Please try again.')
     } catch (err) {
       setWithdrawError(err instanceof Error ? err.message : String(err))
       setWithdrawLoading(false)
@@ -378,20 +314,9 @@ function MePageInner() {
   const startVerificationDeposit = async () => {
     if (!profile) return
     setVerifyError(null)
-    // Manual gateway has no hosted checkout — send the user to the deposit
-    // page with purpose=verification and let them upload a screenshot there.
-    if (countryCfg.gateway === 'manual') {
-      router.push(
-        `/users/first-deposit?userId=${profile.id}&purpose=verification`,
-      )
-      return
-    }
     setVerifyLoading(true)
     try {
-      const endpoint = countryCfg.gateway === 'moolre'
-        ? '/api/payments/moolre/start'
-        : '/api/payments/paystack/start'
-      const res = await fetch(endpoint, {
+      const res = await fetch('/api/payments/flutterwave/start', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -399,56 +324,20 @@ function MePageInner() {
           amount: verificationAmount,
           purpose: 'verification',
           returnPath: '/me',
+          // Mobile-money countries need a phone + network for the charge.
+          phone: profile.phone ?? undefined,
+          network: countryCfg.payoutNetworks[0]?.key,
         }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         throw new Error(data.error ?? `HTTP ${res.status}`)
       }
-
-      if (countryCfg.gateway === 'paystack') {
-        if (!data.publicKey) {
-          throw new Error('Paystack public key not configured on server')
-        }
-        await openPaystackPopup({
-          publicKey: data.publicKey,
-          email: data.email,
-          amountMinor: data.amountMinor,
-          reference: data.reference,
-          currency: data.currency,
-          metadata: { userId: profile.id, purpose: 'verification' },
-          onSuccess: async (reference) => {
-            try {
-              const vres = await fetch('/api/payments/paystack/verify', {
-                method: 'POST',
-                headers: { 'content-type': 'application/json' },
-                body: JSON.stringify({ reference }),
-              })
-              const vdata = await vres.json().catch(() => ({}))
-              if (!vres.ok || !vdata.ok) {
-                setDepositToast({
-                  kind: 'failed',
-                  text: `Verification deposit failed (${vdata.status ?? vres.status}). Try again.`,
-                })
-              } else {
-                setDepositToast({ kind: 'success', text: 'Deposit credited. Welcome back!' })
-                await loadProfile()
-              }
-            } catch (err) {
-              setVerifyError(err instanceof Error ? err.message : String(err))
-            } finally {
-              setVerifyLoading(false)
-            }
-          },
-          onClose: () => {
-            setVerifyLoading(false)
-          },
-        })
-        return
+      // Flutterwave hosts the rest of the payment — send the customer there.
+      if (!data.redirectUrl) {
+        throw new Error('Could not start the payment. Please try again.')
       }
-
-      if (!data.url) throw new Error('gateway did not return a redirect URL')
-      window.location.href = data.url as string
+      window.location.href = data.redirectUrl as string
     } catch (err) {
       setVerifyError(err instanceof Error ? err.message : String(err))
       setVerifyLoading(false)
@@ -806,49 +695,26 @@ function MePageInner() {
                     {verifyError}
                   </p>
                 )}
-                {countryCfg.gateway === 'paystack' && country === 'GH' ? (
-                  <MobileMoneyForm
-                    userId={profile.id}
-                    amount={verificationAmount}
-                    currency={currency}
-                    defaultPhone={profile.phone ?? null}
-                    purpose="verification"
-                    onSuccess={async () => {
-                      setDepositToast({ kind: 'success', text: 'Deposit credited. Welcome back!' })
-                      await loadProfile()
-                    }}
-                    onSwitchToCard={() => void startVerificationDeposit()}
-                  />
-                ) : (
-                  <>
-                    <Button
-                      type="button"
-                      onClick={() => void startVerificationDeposit()}
-                      disabled={verifyLoading}
-                      className="w-full h-11 bg-primary text-primary-foreground hover:bg-primary/90 font-bold"
-                    >
-                      {verifyLoading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          {countryCfg.gateway === 'manual'
-                            ? 'Opening…'
-                            : countryCfg.gateway === 'paystack'
-                              ? 'Opening checkout…'
-                              : 'Redirecting…'}
-                        </>
-                      ) : countryCfg.gateway === 'manual' ? (
-                        `Pay ${currency} ${verificationAmount} via bank transfer`
-                      ) : (
-                        `Pay ${currency} ${verificationAmount} to verify`
-                      )}
-                    </Button>
-                    <p className="text-[11px] text-center text-muted-foreground">
-                      {countryCfg.gateway === 'manual'
-                        ? 'Bank transfer · Admin credits your wallet after verifying the screenshot.'
-                        : `Secured by ${countryCfg.gateway === 'moolre' ? 'Moolre' : 'Paystack'}. Funds are credited to your wallet balance.`}
-                    </p>
-                  </>
-                )}
+                <>
+                  <Button
+                    type="button"
+                    onClick={() => void startVerificationDeposit()}
+                    disabled={verifyLoading}
+                    className="w-full h-11 bg-primary text-primary-foreground hover:bg-primary/90 font-bold"
+                  >
+                    {verifyLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Redirecting…
+                      </>
+                    ) : (
+                      `Pay ${currency} ${verificationAmount} to verify`
+                    )}
+                  </Button>
+                  <p className="text-[11px] text-center text-muted-foreground">
+                    Secured by Flutterwave. Funds are credited to your wallet balance.
+                  </p>
+                </>
               </div>
             ) : (
             <form onSubmit={submitWithdraw} className="space-y-4">
@@ -983,7 +849,7 @@ function MePageInner() {
                 </p>
               )}
               <p className="text-[11px] text-center text-muted-foreground">
-                A non-refundable fee of {currency} {countryCfg.withdrawalFee} is charged via Paystack before each withdrawal.
+                A non-refundable fee of {currency} {countryCfg.withdrawalFee} is charged via Flutterwave before each withdrawal.
               </p>
               <Button
                 type="submit"

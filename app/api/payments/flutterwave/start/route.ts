@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { findUserById } from '@/lib/users-store'
 import { recordPayment } from '@/lib/payments-store'
-import { getPaystackPublicKey, initialiseTransaction, toMinorUnits } from '@/lib/paystack'
-import { getMinFirstDeposit } from '@/lib/countries'
+import { createCharge, paymentMethodForCountry } from '@/lib/flutterwave'
+import { getMinFirstDeposit, normalizePhone } from '@/lib/countries'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,6 +11,10 @@ interface StartBody {
   amount?: number
   returnPath?: string
   purpose?: 'deposit' | 'verification'
+  /** Mobile-money phone (GH/KE). */
+  phone?: string
+  /** Selected payout/mobile-money network key. */
+  network?: string
 }
 
 function sanitizeReturnPath(raw: string | undefined): string {
@@ -23,6 +27,11 @@ function originFromRequest(req: Request): string {
   if (explicit) return explicit.replace(/\/$/, '')
   const url = new URL(req.url)
   return `${url.protocol}//${url.host}`
+}
+
+function splitName(name: string): { first: string; last: string } {
+  const parts = name.trim().split(/\s+/)
+  return { first: parts[0] || 'Customer', last: parts.slice(1).join(' ') || '-' }
 }
 
 export async function POST(request: Request) {
@@ -55,68 +64,68 @@ export async function POST(request: Request) {
     )
   }
 
+  // Mobile-money countries need a valid phone; bank countries don't.
+  let phone: string | undefined
+  if (user.country === 'GH' || user.country === 'KE') {
+    phone = normalizePhone(user.country, body.phone ?? user.phone ?? '') || undefined
+    if (!phone) {
+      return NextResponse.json(
+        { error: `enter a valid ${user.country === 'GH' ? 'Ghana' : 'Kenya'} mobile-money number` },
+        { status: 400 },
+      )
+    }
+  }
+
   const refPrefix = purpose === 'verification' ? 'PB-VRF' : 'PB-DEP'
   const reference = `${refPrefix}-${userId.slice(0, 8)}-${Date.now()}`
-  const callbackUrl = `${originFromRequest(request)}/api/payments/paystack/callback?returnPath=${encodeURIComponent(returnPath)}`
+  const redirectUrl = `${originFromRequest(request)}/api/payments/flutterwave/callback?returnPath=${encodeURIComponent(returnPath)}&ref=${encodeURIComponent(reference)}`
+  const name = splitName(user.name)
 
   try {
+    const charge = await createCharge({
+      reference,
+      amount,
+      currency: user.currency,
+      redirectUrl,
+      customer: { email: user.email, firstName: name.first, lastName: name.last, phone },
+      paymentMethod: paymentMethodForCountry(user.country, { phone, network: body.network }),
+      meta: { userId, purpose, country: user.country },
+    })
+
+    // Persist the pending row keyed on our reference, with the Flutterwave
+    // charge id so the callback can confirm + credit it.
     await recordPayment({
       userId,
       reference,
       amount,
       type: 'deposit',
       status: 'pending',
-      provider: 'paystack',
+      provider: 'flutterwave',
       currency: user.currency,
       metadata: {
         purpose,
+        flwChargeId: charge.id,
         returnPath,
         userName: user.name,
         userPhone: user.phone ?? null,
         country: user.country,
       },
-    })
-  } catch (e) {
-    console.error('[paystack/start] pending ledger write failed:', e)
-  }
+    }).catch((e) => console.error('[flutterwave/start] ledger write failed:', e))
 
-  // Use the customer's real email so the transaction (and Paystack receipts)
-  // are tied to them. Fall back to a per-user placeholder if it's ever missing.
-  const customerEmail = user.email?.trim() || `customer+${userId}@noreply.invalid`
-
-  try {
-    const init = await initialiseTransaction({
-      email: customerEmail,
-      amount,
-      currency: user.currency,
-      reference,
-      callbackUrl,
-      metadata: {
-        userId,
-        purpose,
-        country: user.country,
-        userName: user.name,
-      },
-    })
-    // We return everything Inline JS needs (publicKey + amount in minor
-    // units + currency + email + reference) plus the hosted-page URL as a
-    // fallback for any caller that still does a full-page redirect.
     return NextResponse.json(
       {
-        url: init.authorization_url,
-        reference: init.reference,
-        accessCode: init.access_code,
-        publicKey: getPaystackPublicKey(),
-        amountMinor: toMinorUnits(amount, user.currency),
-        currency: user.currency,
-        email: customerEmail,
+        reference,
+        chargeId: charge.id,
+        status: charge.status,
+        redirectUrl: charge.next_action?.redirect_url?.url ?? null,
+        nextAction: charge.next_action ?? null,
       },
       { status: 201 },
     )
   } catch (e) {
-    console.error('[paystack/start] init failed:', e)
+    console.error('[flutterwave/start] charge failed:', e)
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'paystack init failed' },
+      { error: e instanceof Error ? e.message : 'flutterwave charge failed' },
       { status: 502 },
     )
   }
