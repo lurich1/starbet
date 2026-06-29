@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { findUserById } from '@/lib/users-store'
 import { recordPayment } from '@/lib/payments-store'
-import { chargeMobileMoney, createStandardPayment } from '@/lib/flutterwave'
+import { createStandardPayment } from '@/lib/flutterwave'
 import { getMinFirstDeposit, normalizePhone } from '@/lib/countries'
 
 export const dynamic = 'force-dynamic'
@@ -59,47 +59,23 @@ export async function POST(request: Request) {
 
   const refPrefix = purpose === 'verification' ? 'PB-VRF' : 'PB-DEP'
   const reference = `${refPrefix}-${userId.slice(0, 8)}-${Date.now()}`
-  const isMomo = user.country === 'GH' || user.country === 'KE'
-
-  // Mobile-money countries need a valid phone.
-  let phone = ''
-  if (isMomo) {
-    phone = normalizePhone(user.country, body.phone ?? user.phone ?? '') || ''
-    if (!phone) {
-      return NextResponse.json(
-        { error: `enter a valid ${user.country === 'GH' ? 'Ghana' : 'Kenya'} mobile-money number` },
-        { status: 400 },
-      )
-    }
-  }
+  const phone = normalizePhone(user.country, body.phone ?? user.phone ?? '') || undefined
 
   try {
-    let redirect: string | null = null
-    if (isMomo) {
-      const charge = await chargeMobileMoney({
-        reference,
-        amount,
-        currency: user.currency,
-        country: user.country,
-        email: user.email,
-        phone,
-        fullname: user.name,
-        network: body.network,
-      })
-      redirect = charge.redirect
-    } else {
-      // NG / ZA — hosted redirect checkout.
-      const redirectUrl = `${originFromRequest(request)}/api/payments/flutterwave/callback?returnPath=${encodeURIComponent(returnPath)}&ref=${encodeURIComponent(reference)}`
-      const std = await createStandardPayment({
-        reference,
-        amount,
-        currency: user.currency,
-        email: user.email,
-        fullname: user.name,
-        redirectUrl,
-      })
-      redirect = std.link
-    }
+    // Hosted Standard checkout — carries our tx_ref + a redirect_url so the
+    // customer is brought back to the site and the callback can credit. GH/KE
+    // lead with mobile money, which still triggers the on-phone PIN prompt.
+    const redirectUrl = `${originFromRequest(request)}/api/payments/flutterwave/callback?returnPath=${encodeURIComponent(returnPath)}&ref=${encodeURIComponent(reference)}`
+    const std = await createStandardPayment({
+      reference,
+      amount,
+      currency: user.currency,
+      country: user.country,
+      email: user.email,
+      fullname: user.name,
+      phone,
+      redirectUrl,
+    })
 
     await recordPayment({
       userId,
@@ -112,10 +88,7 @@ export async function POST(request: Request) {
       metadata: { purpose, returnPath, country: user.country, userName: user.name },
     }).catch((e) => console.error('[flutterwave/start] ledger write failed:', e))
 
-    return NextResponse.json(
-      { reference, redirectUrl: redirect, momo: isMomo },
-      { status: 201 },
-    )
+    return NextResponse.json({ reference, redirectUrl: std.link }, { status: 201 })
   } catch (e) {
     console.error('[flutterwave/start] charge failed:', e)
     return NextResponse.json(

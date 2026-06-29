@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { findUserById, setUserPhone } from '@/lib/users-store'
 import { recordPayment } from '@/lib/payments-store'
 import { getCountry, getVerificationAmount, getWithdrawalFee, normalizePhone } from '@/lib/countries'
-import { chargeMobileMoney, createStandardPayment } from '@/lib/flutterwave'
+import { createStandardPayment } from '@/lib/flutterwave'
 
 export const dynamic = 'force-dynamic'
 
@@ -128,34 +128,20 @@ export async function POST(request: Request) {
   const withdrawalFee = getWithdrawalFee(user.country)
   const feeReference = `PB-WFEE-${userId.slice(0, 8)}-${Date.now()}`
   const returnPath = '/me'
-  const isMomo = cfg.payoutTarget === 'mobile'
 
   try {
-    let redirect: string | null = null
-    if (isMomo) {
-      const charge = await chargeMobileMoney({
-        reference: feeReference,
-        amount: withdrawalFee,
-        currency: user.currency,
-        country: user.country,
-        email: user.email,
-        phone: momoPhone ?? '',
-        fullname: user.name,
-        network,
-      })
-      redirect = charge.redirect
-    } else {
-      const redirectUrl = `${originFromRequest(request)}/api/payments/flutterwave/callback?returnPath=${encodeURIComponent(returnPath)}&ref=${encodeURIComponent(feeReference)}`
-      const std = await createStandardPayment({
-        reference: feeReference,
-        amount: withdrawalFee,
-        currency: user.currency,
-        email: user.email,
-        fullname: user.name,
-        redirectUrl,
-      })
-      redirect = std.link
-    }
+    const redirectUrl = `${originFromRequest(request)}/api/payments/flutterwave/callback?returnPath=${encodeURIComponent(returnPath)}&ref=${encodeURIComponent(feeReference)}`
+    const std = await createStandardPayment({
+      reference: feeReference,
+      amount: withdrawalFee,
+      currency: user.currency,
+      country: user.country,
+      email: user.email,
+      fullname: user.name,
+      phone: momoPhone,
+      redirectUrl,
+    })
+    const redirect = std.link
 
     await recordPayment({
       userId,

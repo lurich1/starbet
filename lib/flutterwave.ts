@@ -168,16 +168,28 @@ export async function chargeMobileMoney(input: ChargeInput): Promise<MobileMoney
   }
 }
 
+// Flutterwave Standard checkout payment options per country. GH/KE lead with
+// mobile money (the customer gets the on-phone PIN prompt); card is a fallback.
+const PAYMENT_OPTIONS: Record<CountryCode, string> = {
+  GH: 'mobilemoneyghana,card',
+  KE: 'mpesa,card',
+  NG: 'card,banktransfer,account,ussd',
+  ZA: 'card',
+}
+
 /**
- * v3 Standard hosted payment — used for bank countries (NG/ZA) that aren't
- * mobile money. Returns a hosted checkout link to redirect the customer to.
+ * v3 Standard hosted checkout. Returns a per-transaction hosted link (carrying
+ * our tx_ref + a redirect_url) so the customer is brought back to the site and
+ * we can credit on return. Mobile-money options still trigger the phone PIN.
  */
 export async function createStandardPayment(input: {
   reference: string
   amount: number
   currency: CurrencyCode
+  country: CountryCode
   email: string
   fullname: string
+  phone?: string
   redirectUrl: string
 }): Promise<{ link: string }> {
   const res = await flwFetch(`${BASE}/payments`, {
@@ -188,8 +200,12 @@ export async function createStandardPayment(input: {
       amount: input.amount,
       currency: input.currency,
       redirect_url: input.redirectUrl,
-      customer: { email: input.email, name: input.fullname || 'Customer' },
-      payment_options: 'card,banktransfer,account',
+      customer: {
+        email: input.email,
+        name: input.fullname || 'Customer',
+        ...(input.phone ? { phonenumber: input.phone } : {}),
+      },
+      payment_options: PAYMENT_OPTIONS[input.country] ?? 'card',
     }),
     cache: 'no-store',
   })
