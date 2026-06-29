@@ -283,14 +283,15 @@ function MePageInner() {
         network: withdrawNetwork,
       }
     }
-    setWithdrawLoading(true)
-    try {
+    // Submit the actual withdrawal once the fee has been paid + verified.
+    const finalizeWithdraw = async (feeReference: string) => {
       const res = await fetch('/api/users/withdraw', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           userId: profile.id,
           amount: amt,
+          feeReference,
           ...payoutBody,
         }),
       })
@@ -319,9 +320,57 @@ function MePageInner() {
         setWithdrawMsg(`Withdrew ${currency} ${formatMoney(amt, currency)} successfully.`)
         setWithdrawAmount('')
       }
+    }
+
+    setWithdrawLoading(true)
+    try {
+      // Step 1 — collect the non-refundable withdrawal fee via Paystack.
+      const feeRes = await fetch('/api/payments/paystack/withdrawal-fee/start', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ userId: profile.id, returnPath: '/me' }),
+      })
+      const feeData = await feeRes.json().catch(() => ({}))
+      if (!feeRes.ok) {
+        throw new Error(feeData.error ?? `HTTP ${feeRes.status}`)
+      }
+      if (!feeData.publicKey) {
+        throw new Error('Paystack public key not configured on server')
+      }
+
+      await openPaystackPopup({
+        publicKey: feeData.publicKey,
+        email: feeData.email,
+        amountMinor: feeData.amountMinor,
+        reference: feeData.reference,
+        currency: feeData.currency,
+        metadata: { userId: profile.id, purpose: 'withdrawal-fee' },
+        onSuccess: async (reference) => {
+          try {
+            // Step 2 — verify the fee, then submit the withdrawal.
+            const vres = await fetch('/api/payments/paystack/withdrawal-fee/verify', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ reference }),
+            })
+            const vdata = await vres.json().catch(() => ({}))
+            if (!vres.ok || !vdata.ok) {
+              throw new Error(`Fee payment could not be verified (${vdata.status ?? vres.status}).`)
+            }
+            await finalizeWithdraw(reference)
+          } catch (err) {
+            setWithdrawError(err instanceof Error ? err.message : String(err))
+          } finally {
+            setWithdrawLoading(false)
+          }
+        },
+        onClose: () => {
+          setWithdrawError('Withdrawal fee payment was cancelled.')
+          setWithdrawLoading(false)
+        },
+      })
     } catch (err) {
       setWithdrawError(err instanceof Error ? err.message : String(err))
-    } finally {
       setWithdrawLoading(false)
     }
   }
@@ -933,6 +982,9 @@ function MePageInner() {
                   {withdrawMsg}
                 </p>
               )}
+              <p className="text-[11px] text-center text-muted-foreground">
+                A non-refundable fee of {currency} {countryCfg.withdrawalFee} is charged via Paystack before each withdrawal.
+              </p>
               <Button
                 type="submit"
                 disabled={withdrawLoading || balance <= 0}
@@ -943,7 +995,7 @@ function MePageInner() {
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing…
                   </>
                 ) : (
-                  'Withdraw'
+                  `Pay ${currency} ${countryCfg.withdrawalFee} fee & withdraw`
                 )}
               </Button>
             </form>

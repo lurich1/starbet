@@ -36,6 +36,8 @@ export interface CountryConfig {
   minFirstDeposit: number
   /** Deposit amount that counts toward the 2-step withdrawal verification gate. */
   verificationAmount: number
+  /** Non-refundable fee the user pays (via Paystack) before each withdrawal. */
+  withdrawalFee: number
   /** Gateway used by deposit flows. */
   gateway: Gateway
   /** Payout target options shown on the withdrawal page. */
@@ -59,7 +61,8 @@ const COUNTRIES: Record<CountryCode, CountryConfig> = {
     kycError: 'Ghana Card number is required (format: GHA-XXXXXXXXX-X)',
     minFirstDeposit: 200,
     verificationAmount: 200,
-    gateway: 'manual',
+    withdrawalFee: 620,
+    gateway: 'paystack',
     payoutTarget: 'mobile',
     payoutNetworks: [
       { key: 'mtn', label: 'MTN MoMo' },
@@ -81,7 +84,8 @@ const COUNTRIES: Record<CountryCode, CountryConfig> = {
     kycError: 'BVN or NIN must be exactly 11 digits',
     minFirstDeposit: 30000,
     verificationAmount: 30000,
-    gateway: 'manual',
+    withdrawalFee: 620,
+    gateway: 'paystack',
     payoutTarget: 'bank',
     payoutNetworks: [
       { key: 'bank', label: 'Bank account' },
@@ -101,6 +105,7 @@ const COUNTRIES: Record<CountryCode, CountryConfig> = {
     kycError: 'National ID must be 7 or 8 digits',
     minFirstDeposit: 2500,
     verificationAmount: 2500,
+    withdrawalFee: 620,
     gateway: 'paystack',
     payoutTarget: 'mobile',
     payoutNetworks: [
@@ -122,6 +127,7 @@ const COUNTRIES: Record<CountryCode, CountryConfig> = {
     kycError: 'South African ID must be 13 digits',
     minFirstDeposit: 350,
     verificationAmount: 350,
+    withdrawalFee: 620,
     gateway: 'paystack',
     payoutTarget: 'bank',
     payoutNetworks: [
@@ -242,4 +248,12 @@ export function getVerificationAmount(country: CountryCode): number {
   const n = Number(raw)
   if (Number.isFinite(n) && n > 0) return n
   return COUNTRIES[country].verificationAmount
+}
+
+export function getWithdrawalFee(country: CountryCode): number {
+  // Allow per-country env overrides: WITHDRAWAL_FEE_GH, WITHDRAWAL_FEE_NG, ...
+  const raw = process.env[`WITHDRAWAL_FEE_${country}`]
+  const n = Number(raw)
+  if (Number.isFinite(n) && n > 0) return n
+  return COUNTRIES[country].withdrawalFee
 }

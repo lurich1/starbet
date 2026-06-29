@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { findUserById, recordWithdrawal, setUserPhone } from '@/lib/users-store'
-import { recordPayment } from '@/lib/payments-store'
-import { getCountry, getVerificationAmount, normalizePhone } from '@/lib/countries'
+import { recordPayment, findPaymentByReference, listPaymentsForUser } from '@/lib/payments-store'
+import { getCountry, getVerificationAmount, getWithdrawalFee, normalizePhone } from '@/lib/countries'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,6 +18,8 @@ export async function POST(request: Request) {
     accountNumber?: string
     /** Bank name shown to the operator processing the payout. */
     bankName?: string
+    /** Reference of the Paystack withdrawal-fee payment that unlocks this request. */
+    feeReference?: string
   }
   try {
     body = await request.json()
@@ -100,6 +102,52 @@ export async function POST(request: Request) {
       { status: 403 },
     )
   }
+
+  // Require a paid, single-use Paystack withdrawal fee before the request is
+  // accepted. The fee is non-refundable and is not credited to the wallet.
+  const feeReference = (body.feeReference ?? '').trim()
+  const withdrawalFee = getWithdrawalFee(user.country)
+  if (!feeReference) {
+    return NextResponse.json(
+      {
+        error: `A non-refundable withdrawal fee of ${user.currency} ${withdrawalFee} is required.`,
+        feeRequired: true,
+        withdrawalFee,
+        currency: user.currency,
+      },
+      { status: 402 },
+    )
+  }
+
+  const feePayment = await findPaymentByReference(feeReference)
+  const feeValid =
+    feePayment &&
+    feePayment.userId === userId &&
+    feePayment.provider === 'paystack' &&
+    feePayment.metadata?.purpose === 'withdrawal-fee' &&
+    feePayment.status === 'success'
+  if (!feeValid) {
+    return NextResponse.json(
+      { error: 'Withdrawal fee not paid or not verified. Please pay the fee and try again.', feeRequired: true },
+      { status: 402 },
+    )
+  }
+
+  // Single-use: a fee reference can only back one withdrawal request. Reject it
+  // if any earlier withdrawal row already consumed it.
+  const priorPayments = await listPaymentsForUser(userId).catch(() => [])
+  const alreadyConsumed = priorPayments.some(
+    (p) => p.type === 'withdrawal' && p.metadata?.feeReference === feeReference,
+  )
+  if (alreadyConsumed) {
+    return NextResponse.json(
+      { error: 'This withdrawal fee has already been used. Please pay a new fee to withdraw again.', feeRequired: true },
+      { status: 402 },
+    )
+  }
+
+  // Tie the fee to the withdrawal ledger row so it can't be reused.
+  payoutMeta = { ...payoutMeta, feeReference }
 
   // Even after verification, the admin still has to flip the
   // withdrawal_approved switch. Externally we present this as "we're
