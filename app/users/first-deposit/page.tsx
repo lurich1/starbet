@@ -763,7 +763,10 @@ function DepositForm() {
                     </>
                   ) : (
                     <p className="text-center text-[11px] text-muted-foreground">
-                      Secured by {gateway === 'moolre' ? 'Moolre' : 'Flutterwave'} · You can deposit later from your account
+                      Secured by {gateway === 'moolre' ? 'Moolre' : 'Flutterwave'}
+                      {gateway !== 'moolre' && profile?.email
+                        ? ` · Pay using your account email (${profile.email}) so we credit you automatically`
+                        : ' · You can deposit later from your account'}
                     </p>
                   )}
 

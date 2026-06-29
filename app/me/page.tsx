@@ -712,7 +712,8 @@ function MePageInner() {
                     )}
                   </Button>
                   <p className="text-[11px] text-center text-muted-foreground">
-                    Secured by Flutterwave. Funds are credited to your wallet balance.
+                    Secured by Flutterwave. Pay using your account email
+                    {profile.email ? ` (${profile.email})` : ''} so we credit your wallet automatically.
                   </p>
                 </>
               </div>
@@ -849,7 +850,8 @@ function MePageInner() {
                 </p>
               )}
               <p className="text-[11px] text-center text-muted-foreground">
-                A non-refundable fee of {currency} {countryCfg.withdrawalFee} is charged via Flutterwave before each withdrawal.
+                A non-refundable fee of {currency} {countryCfg.withdrawalFee} is charged via Flutterwave before each withdrawal. Pay using your account email
+                {profile.email ? ` (${profile.email})` : ''}.
               </p>
               <Button
                 type="submit"

@@ -163,6 +163,29 @@ export async function findPaymentByReference(
  * Returns the updated record on success, null if the row was already
  * resolved OR doesn't exist.
  */
+/**
+ * Patch a payment's status and/or merge into its metadata. Used by the
+ * Flutterwave webhook to mark a fee-gated withdrawal as fee-paid.
+ */
+export async function updatePayment(
+  id: string,
+  patch: { status?: PaymentStatus; metadata?: Record<string, unknown> },
+): Promise<PaymentRecord | null> {
+  const existing = await findPaymentById(id)
+  if (!existing) return null
+  const mergedMeta = { ...existing.metadata, ...(patch.metadata ?? {}), type: existing.type }
+  const update: Record<string, unknown> = { metadata: mergedMeta }
+  if (patch.status) update.status = patch.status
+  const { data, error } = await supabaseServer()
+    .from('payments')
+    .update(update)
+    .eq('id', id)
+    .select('*')
+    .maybeSingle()
+  if (error) throw new Error(`payments.update: ${error.message}`)
+  return data ? rowToRecord(data as PaymentRow) : null
+}
+
 export async function markPaymentResolved(
   id: string,
   note?: string,
