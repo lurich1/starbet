@@ -69,11 +69,12 @@ export async function POST(request: Request) {
     console.error('[paystack/withdrawal-fee/start] pending ledger write failed:', e)
   }
 
-  const placeholderEmail = `noreply+${userId}@primebet.app`
+  // Use the customer's real email so the fee transaction is tied to them.
+  const customerEmail = user.email?.trim() || `customer+${userId}@noreply.invalid`
 
   try {
     const init = await initialiseTransaction({
-      email: placeholderEmail,
+      email: customerEmail,
       amount: fee,
       currency: user.currency,
       reference,
@@ -94,7 +95,7 @@ export async function POST(request: Request) {
         amountMinor: toMinorUnits(fee, user.currency),
         amount: fee,
         currency: user.currency,
-        email: placeholderEmail,
+        email: customerEmail,
       },
       { status: 201 },
     )

@@ -97,13 +97,12 @@ export async function POST(request: Request) {
     console.error('[paystack/momo/start] pending ledger write failed:', e)
   }
 
-  // Paystack requires an email but we don't share the user's real address —
-  // mirror the placeholder pattern used by the card-init route.
-  const placeholderEmail = `noreply+${userId}@primebet.app`
+  // Use the customer's real email so the charge is tied to them.
+  const customerEmail = user.email?.trim() || `customer+${userId}@noreply.invalid`
 
   try {
     const charge = await chargeMobileMoney({
-      email: placeholderEmail,
+      email: customerEmail,
       amount,
       currency: 'GHS',
       reference,
