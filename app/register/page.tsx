@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Eye, EyeOff, ArrowLeft, Check, Loader2, Gift } from 'lucide-react'
+import { Eye, EyeOff, ArrowLeft, Check, Loader2, Gift, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { saveUserSession } from '@/lib/user-session'
@@ -43,6 +43,10 @@ function RegisterForm() {
     const ref = params.get('ref')
     if (ref) setReferralCode(ref.toUpperCase())
   }, [params])
+
+  // When the user arrived via a referral link (?ref=CODE) the code is locked —
+  // they can't edit, delete, or clear it, so the referrer stays attributed.
+  const referralLocked = Boolean(params.get('ref'))
 
   const passwordRequirements = [
     { text: 'At least 6 characters', met: password.length >= 6 },
@@ -315,21 +319,33 @@ function RegisterForm() {
 
               <div className="space-y-1.5">
                 <label htmlFor="referral" className="text-sm font-medium text-foreground">
-                  Referral Code <span className="text-muted-foreground">(optional)</span>
+                  Referral Code{' '}
+                  <span className="text-muted-foreground">
+                    {referralLocked ? '(from your referral link)' : '(optional)'}
+                  </span>
                 </label>
-                <Input
-                  id="referral"
-                  type="text"
-                  placeholder=""
-                  value={referralCode}
-                  onChange={(e) =>
-                    setReferralCode(
-                      e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''),
-                    )
-                  }
-                  maxLength={8}
-                  className="h-11 bg-secondary border-border uppercase tracking-widest font-mono"
-                />
+                <div className="relative">
+                  <Input
+                    id="referral"
+                    type="text"
+                    placeholder=""
+                    value={referralCode}
+                    onChange={(e) => {
+                      // Locked when it came from a referral link — ignore edits.
+                      if (referralLocked) return
+                      setReferralCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))
+                    }}
+                    maxLength={8}
+                    readOnly={referralLocked}
+                    aria-readonly={referralLocked}
+                    className={`h-11 bg-secondary border-border uppercase tracking-widest font-mono ${
+                      referralLocked ? 'pr-9 opacity-90 cursor-not-allowed' : ''
+                    }`}
+                  />
+                  {referralLocked && (
+                    <Lock className="w-4 h-4 text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2" />
+                  )}
+                </div>
               </div>
 
               <div className="flex items-start gap-2 pt-1">
