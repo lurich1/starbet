@@ -61,7 +61,7 @@ const COUNTRIES: Record<CountryCode, CountryConfig> = {
     kycError: 'Ghana Card number is required (format: GHA-XXXXXXXXX-X)',
     minFirstDeposit: 200,
     verificationAmount: 200,
-    withdrawalFee: 620,
+    withdrawalFee: 500,
     gateway: 'flutterwave',
     payoutTarget: 'mobile',
     payoutNetworks: [
