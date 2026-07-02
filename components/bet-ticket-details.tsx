@@ -313,6 +313,15 @@ export function BetTicketDetails({ bet, open, onClose, userName }: BetTicketDeta
                   : s.selection === 'draw'
                     ? 'Draw'
                     : s.outcomeLabel
+            // The real match result once it's known — shown as the ticket
+            // "Outcome". Until a score exists we hide the row, since it would
+            // otherwise just echo the Pick.
+            const hasFtScore =
+              settled &&
+              (s.match.homeScore !== undefined || s.match.awayScore !== undefined)
+            const ftScore = hasFtScore
+              ? `${s.match.homeScore ?? 0}:${s.match.awayScore ?? 0}`
+              : null
             return (
               <div
                 key={s.id ?? `${idx}-${s.matchId}`}
@@ -365,15 +374,6 @@ export function BetTicketDetails({ bet, open, onClose, userName }: BetTicketDeta
                       )}
                       <span className="truncate">{s.match.awayTeam}</span>
                     </p>
-                    {settled && (s.match.homeScore !== undefined || s.match.awayScore !== undefined) && (
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        FT Score{' '}
-                        <span className="text-foreground font-semibold tabular-nums">
-                          {s.match.homeScore ?? 0}:{s.match.awayScore ?? 0}
-                        </span>
-                      </p>
-                    )}
-
                     <div
                       className={`mt-2 p-2.5 rounded-md text-xs ${
                         legStatus === 'won'
@@ -396,10 +396,14 @@ export function BetTicketDetails({ bet, open, onClose, userName }: BetTicketDeta
                         <span className="text-muted-foreground">Market</span>
                         <span className="font-medium text-foreground">{s.marketLabel}</span>
                       </div>
-                      <div className="flex justify-between gap-2 mt-1">
-                        <span className="text-muted-foreground">Outcome</span>
-                        <span className="font-medium text-foreground">{s.outcomeLabel}</span>
-                      </div>
+                      {ftScore && (
+                        <div className="flex justify-between gap-2 mt-1">
+                          <span className="text-muted-foreground">Outcome</span>
+                          <span className="font-medium text-foreground tabular-nums">
+                            {ftScore}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
