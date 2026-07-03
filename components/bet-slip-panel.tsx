@@ -18,6 +18,14 @@ import {
 import type { BetSelection, PlacedBet } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import { useBets } from '@/hooks/use-bets'
 import { getUserId } from '@/lib/user-session'
 import { getBettingState } from '@/lib/match-betting'
@@ -78,7 +86,14 @@ export function BetSlipPanel({
   const pendingIdsRef = useRef<Set<string>>(new Set())
   const [celebrationBet, setCelebrationBet] = useState<PlacedBet | null>(null)
 
-  const { bets, placeBet, settleBet, removeBet, lookupCode, loading, error } = useBets()
+  const { bets, placeBet, settleBet, removeBet, lookupCode, loading, error, errorCode } = useBets()
+
+  // The 24h deposit gate (server code 'deposit-required') pops a modal prompting
+  // the user to top up before they can stake again, rather than a quiet inline note.
+  const [depositPromptOpen, setDepositPromptOpen] = useState(false)
+  useEffect(() => {
+    if (errorCode === 'deposit-required') setDepositPromptOpen(true)
+  }, [errorCode])
 
   // Watch for a pending → won transition and pop the trophy.
   useEffect(() => {
@@ -224,6 +239,32 @@ export function BetSlipPanel({
           onClose={() => setCelebrationBet(null)}
         />
       )}
+
+      {/* 24h deposit gate: prompt the user to top up before they can stake again. */}
+      <Dialog open={depositPromptOpen} onOpenChange={setDepositPromptOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-destructive" />
+              Deposit required
+            </DialogTitle>
+            <DialogDescription>
+              Please make a deposit to keep playing. You need a deposit in the last 24 hours
+              before you can stake again.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDepositPromptOpen(false)}>
+              Not now
+            </Button>
+            <Button asChild className="font-bold">
+              <Link href={userId ? `/users/first-deposit?userId=${userId}` : '/register'}>
+                Deposit now
+              </Link>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex border-b border-border text-sm">
         <TabButton active={tab === 'slip'} onClick={() => setTab('slip')}>

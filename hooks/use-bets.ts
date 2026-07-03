@@ -19,6 +19,9 @@ export function useBets(options: UseBetsOptions = {}) {
   const [bets, setBets] = useState<PlacedBet[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Machine-readable code from the last failed request (e.g. 'deposit-required'
+  // when the 24h deposit gate blocks a stake), so the UI can react specifically.
+  const [errorCode, setErrorCode] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -41,6 +44,7 @@ export function useBets(options: UseBetsOptions = {}) {
     async (selections: BetSelection[], stake: number): Promise<PlacedBet | null> => {
       setLoading(true)
       setError(null)
+      setErrorCode(null)
       try {
         const userId = options.scope && options.scope !== 'admin' ? options.scope : getUserId()
         const res = await fetch('/api/bets', {
@@ -49,7 +53,10 @@ export function useBets(options: UseBetsOptions = {}) {
           body: JSON.stringify({ selections, stake, userId }),
         })
         const data = await res.json()
-        if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`)
+        if (!res.ok) {
+          setErrorCode(typeof data.code === 'string' ? data.code : null)
+          throw new Error(data.error ?? `HTTP ${res.status}`)
+        }
         const bet = data.bet as PlacedBet
         setBets((prev) => [bet, ...prev])
         return bet
@@ -133,5 +140,5 @@ export function useBets(options: UseBetsOptions = {}) {
     return () => clearInterval(t)
   }, [options.scope, refresh])
 
-  return { bets, loading, error, refresh, placeBet, settleBet, removeBet, lookupCode }
+  return { bets, loading, error, errorCode, refresh, placeBet, settleBet, removeBet, lookupCode }
 }
