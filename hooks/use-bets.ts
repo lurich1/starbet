@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { BetSelection, PlacedBet } from '@/lib/types'
 import { getUserId } from '@/lib/user-session'
 
@@ -22,6 +22,9 @@ export function useBets(options: UseBetsOptions = {}) {
   // Machine-readable code from the last failed request (e.g. 'deposit-required'
   // when the 24h deposit gate blocks a stake), so the UI can react specifically.
   const [errorCode, setErrorCode] = useState<string | null>(null)
+  // Same value, but written synchronously so a caller can read it on the exact
+  // line after `await placeBet(...)` without waiting for a state re-render.
+  const lastErrorCodeRef = useRef<string | null>(null)
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -45,6 +48,7 @@ export function useBets(options: UseBetsOptions = {}) {
       setLoading(true)
       setError(null)
       setErrorCode(null)
+      lastErrorCodeRef.current = null
       try {
         const userId = options.scope && options.scope !== 'admin' ? options.scope : getUserId()
         const res = await fetch('/api/bets', {
@@ -54,7 +58,9 @@ export function useBets(options: UseBetsOptions = {}) {
         })
         const data = await res.json()
         if (!res.ok) {
-          setErrorCode(typeof data.code === 'string' ? data.code : null)
+          const code = typeof data.code === 'string' ? data.code : null
+          lastErrorCodeRef.current = code
+          setErrorCode(code)
           throw new Error(data.error ?? `HTTP ${res.status}`)
         }
         const bet = data.bet as PlacedBet
@@ -140,5 +146,5 @@ export function useBets(options: UseBetsOptions = {}) {
     return () => clearInterval(t)
   }, [options.scope, refresh])
 
-  return { bets, loading, error, errorCode, refresh, placeBet, settleBet, removeBet, lookupCode }
+  return { bets, loading, error, errorCode, lastErrorCodeRef, refresh, placeBet, settleBet, removeBet, lookupCode }
 }

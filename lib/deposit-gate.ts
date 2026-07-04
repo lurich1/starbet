@@ -6,7 +6,7 @@ import { latestSuccessfulDepositAt } from '@/lib/payments-store'
 export const DEPOSIT_WINDOW_MS = 24 * 60 * 60 * 1000
 
 export const DEPOSIT_REQUIRED_MESSAGE =
-  'Please make a deposit to keep playing. You need a deposit in the last 24 hours before you can stake again.'
+  'Bet submission failed. A new deposit is required before this bet can be placed.'
 
 export interface DepositGateResult {
   allowed: boolean

@@ -86,7 +86,8 @@ export function BetSlipPanel({
   const pendingIdsRef = useRef<Set<string>>(new Set())
   const [celebrationBet, setCelebrationBet] = useState<PlacedBet | null>(null)
 
-  const { bets, placeBet, settleBet, removeBet, lookupCode, loading, error, errorCode } = useBets()
+  const { bets, placeBet, settleBet, removeBet, lookupCode, loading, error, errorCode, lastErrorCodeRef } =
+    useBets()
 
   // The 24h deposit gate (server code 'deposit-required') pops a modal prompting
   // the user to top up before they can stake again, rather than a quiet inline note.
@@ -94,6 +95,9 @@ export function BetSlipPanel({
   useEffect(() => {
     if (errorCode === 'deposit-required') setDepositPromptOpen(true)
   }, [errorCode])
+  // Deterministic check, read straight after a failed placeBet(): true when the
+  // server blocked this stake on the deposit gate.
+  const wasDepositBlocked = () => lastErrorCodeRef.current === 'deposit-required'
 
   // Watch for a pending → won transition and pop the trophy.
   useEffect(() => {
@@ -158,6 +162,8 @@ export function BetSlipPanel({
         onClearAll()
         setTab('open')
         onPlaced?.()
+      } else if (wasDepositBlocked()) {
+        setDepositPromptOpen(true)
       } else {
         setStatusMsg({ kind: 'err', text: error ?? 'Could not place bets.' })
       }
@@ -174,6 +180,8 @@ export function BetSlipPanel({
       onClearAll()
       setTab('open')
       onPlaced?.()
+    } else if (wasDepositBlocked()) {
+      setDepositPromptOpen(true)
     } else {
       setStatusMsg({ kind: 'err', text: error ?? 'Could not place bet.' })
     }
@@ -246,11 +254,10 @@ export function BetSlipPanel({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-destructive" />
-              Deposit required
+              Bet submission failed
             </DialogTitle>
             <DialogDescription>
-              Please make a deposit to keep playing. You need a deposit in the last 24 hours
-              before you can stake again.
+              A new deposit is required before this bet can be placed.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
