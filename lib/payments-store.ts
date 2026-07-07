@@ -150,6 +150,22 @@ export async function countWithdrawals(
   }).length
 }
 
+/**
+ * All withdrawal rows for a set of users, newest first. Used by the sub-admin
+ * dashboard to show the withdrawals made by their referred users. Returns [] for
+ * an empty id list.
+ */
+export async function listWithdrawalsForUsers(userIds: string[]): Promise<PaymentRecord[]> {
+  if (userIds.length === 0) return []
+  const { data, error } = await supabaseServer()
+    .from('payments')
+    .select('*')
+    .in('user_id', userIds)
+    .order('created_at', { ascending: false })
+  if (error) throw new Error(`payments.listWithdrawalsForUsers: ${error.message}`)
+  return ((data ?? []) as PaymentRow[]).map(rowToRecord).filter((p) => p.type === 'withdrawal')
+}
+
 export async function listPaymentsForUser(userId: string): Promise<PaymentRecord[]> {
   const { data, error } = await supabaseServer()
     .from('payments')

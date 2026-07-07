@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { currentSubAdmin } from '@/lib/sub-admin-session'
 import { listUsersReferredBy, listCommissionsForSubAdmin } from '@/lib/users-store'
+import { listWithdrawalsForUsers } from '@/lib/payments-store'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,6 +11,9 @@ export async function GET() {
 
   const referredUsers = await listUsersReferredBy(sa.id)
   const commissions = await listCommissionsForSubAdmin(sa.id)
+
+  const userNameById = new Map(referredUsers.map((u) => [u.id, u.name] as const))
+  const withdrawals = await listWithdrawalsForUsers(referredUsers.map((u) => u.id))
 
   const depositedCount = referredUsers.filter((u) => u.firstDepositAt).length
 
@@ -32,6 +36,15 @@ export async function GET() {
       pending: referredUsers.length - depositedCount,
       commissionsCount: commissions.length,
     },
+    withdrawals: withdrawals.map((w) => ({
+      id: w.id,
+      userId: w.userId,
+      userName: (w.userId && userNameById.get(w.userId)) || '—',
+      amount: w.amount,
+      currency: w.currency,
+      status: w.status,
+      createdAt: w.createdAt,
+    })),
     referredUsers: referredUsers.map((u) => ({
       id: u.id,
       name: u.name,

@@ -11,6 +11,7 @@ import {
   Loader2,
   Users,
   Wallet,
+  Banknote,
   AlertTriangle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -60,6 +61,15 @@ interface MeResponse {
     commission: number
     currency: string
     rate: number
+    createdAt: string
+  }[]
+  withdrawals: {
+    id: string
+    userId: string | null
+    userName: string
+    amount: number
+    currency: string
+    status: 'pending' | 'success' | 'failed' | 'cancelled'
     createdAt: string
   }[]
 }
@@ -337,8 +347,72 @@ export default function SubAdminDashboardPage() {
             </>
           )}
         </section>
+
+        {/* Withdrawals by referred users */}
+        <section className="bg-card border border-border rounded-xl overflow-hidden">
+          <header className="px-4 py-3 border-b border-border flex items-center gap-2">
+            <Banknote className="w-4 h-4 text-muted-foreground shrink-0" />
+            <div>
+              <h2 className="font-semibold">Withdrawals ({data.withdrawals.length})</h2>
+              <p className="text-xs text-muted-foreground">
+                Payouts requested by the users you referred.
+              </p>
+            </div>
+          </header>
+          {data.withdrawals.length === 0 ? (
+            <p className="p-6 text-center text-sm text-muted-foreground">
+              No withdrawals from your referred users yet.
+            </p>
+          ) : (
+            <>
+              <div className="hidden md:grid grid-cols-[1fr_180px_140px_120px] gap-3 px-4 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground border-b border-border bg-secondary/40">
+                <span>User</span>
+                <span>Requested</span>
+                <span className="text-right">Amount</span>
+                <span className="text-right">Status</span>
+              </div>
+              <ul className="divide-y divide-border">
+                {data.withdrawals.map((w) => (
+                  <li key={w.id} className="px-4 py-3">
+                    <div className="md:grid md:grid-cols-[1fr_180px_140px_120px] md:gap-3 md:items-center flex flex-col gap-1">
+                      <p className="font-medium text-sm truncate">{w.userName}</p>
+                      <p className="text-xs text-muted-foreground tabular-nums">
+                        {new Date(w.createdAt).toLocaleString(undefined, {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                      <p className="md:text-right text-sm font-bold tabular-nums">
+                        {w.currency} {formatMoney(w.amount, w.currency)}
+                      </p>
+                      <div className="md:text-right">
+                        <StatusBadge status={w.status} />
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </section>
       </main>
     </div>
+  )
+}
+
+function StatusBadge({ status }: { status: 'pending' | 'success' | 'failed' | 'cancelled' }) {
+  const map = {
+    success: { label: 'Paid', cls: 'bg-success/10 text-success border-success/20' },
+    pending: { label: 'Pending', cls: 'bg-warning/10 text-warning border-warning/20' },
+    failed: { label: 'Failed', cls: 'bg-destructive/10 text-destructive border-destructive/20' },
+    cancelled: { label: 'Cancelled', cls: 'bg-secondary text-muted-foreground border-border' },
+  }[status]
+  return (
+    <span className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full border ${map.cls}`}>
+      {map.label}
+    </span>
   )
 }
 
