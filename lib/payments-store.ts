@@ -128,6 +128,28 @@ export async function latestSuccessfulDepositAt(userId: string): Promise<string 
   return null
 }
 
+/**
+ * How many withdrawals a user has that aren't failed/cancelled. Defaults to
+ * counting `pending` + `success` so an in-flight payout also counts (this backs
+ * the "unverified accounts can withdraw once" rule — a failed+refunded attempt
+ * flips to `failed` and stops counting, so the user can try again).
+ */
+export async function countWithdrawals(
+  userId: string,
+  statuses: PaymentStatus[] = ['pending', 'success'],
+): Promise<number> {
+  const { data, error } = await supabaseServer()
+    .from('payments')
+    .select('metadata, status')
+    .eq('user_id', userId)
+    .in('status', statuses)
+  if (error) throw new Error(`payments.countWithdrawals: ${error.message}`)
+  return ((data ?? []) as Pick<PaymentRow, 'metadata' | 'status'>[]).filter((r) => {
+    const meta = r.metadata ?? {}
+    return (typeof meta.type === 'string' ? meta.type : 'deposit') === 'withdrawal'
+  }).length
+}
+
 export async function listPaymentsForUser(userId: string): Promise<PaymentRecord[]> {
   const { data, error } = await supabaseServer()
     .from('payments')

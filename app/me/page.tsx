@@ -740,7 +740,8 @@ function MePageInner() {
               <h2 className="text-lg font-bold text-foreground">Account Not Verified</h2>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Your account is not yet verified. You can currently withdraw only{' '}
+              Your account is not yet verified. You can make{' '}
+              <span className="font-semibold text-foreground">one withdrawal</span> of{' '}
               <span className="font-semibold text-foreground">
                 {currency} {withdrawalMin}
               </span>{' '}
@@ -786,7 +787,7 @@ function MePageInner() {
                 onClick={() => setVerifyNoticeOpen(false)}
                 className="w-full h-11 font-semibold"
               >
-                Continue with {currency} {withdrawalMin}–{withdrawalMaxUnverified}
+                Continue with one {currency} {withdrawalMin}–{withdrawalMaxUnverified} withdrawal
               </Button>
             </div>
           </div>

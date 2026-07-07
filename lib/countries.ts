@@ -80,7 +80,7 @@ const COUNTRIES: Record<CountryCode, CountryConfig> = {
     verificationAmounts: [500, 500, 500],
     withdrawalFee: 0,
     withdrawalMin: 1,
-    withdrawalMaxUnverified: 30,
+    withdrawalMaxUnverified: 20,
     withdrawalMaxVerified: 75000,
     gateway: 'flutterwave',
     payoutTarget: 'mobile',

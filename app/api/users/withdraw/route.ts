@@ -6,7 +6,7 @@ import {
   debitBalance,
   creditBalance,
 } from '@/lib/users-store'
-import { recordPayment } from '@/lib/payments-store'
+import { recordPayment, countWithdrawals } from '@/lib/payments-store'
 import {
   getCountry,
   getVerificationSteps,
@@ -127,6 +127,29 @@ export async function POST(request: Request) {
       { error: `Minimum withdrawal is ${user.currency} ${minAmount}.` },
       { status: 400 },
     )
+  }
+
+  // Unverified users get exactly ONE withdrawal. After that they must pay for
+  // verification (the qualifying deposits) before they can withdraw again.
+  // (A failed+refunded payout flips to 'failed' and no longer counts.)
+  if (!verified) {
+    const priorWithdrawals = await countWithdrawals(userId)
+    if (priorWithdrawals >= 1) {
+      const remaining = total - step
+      const verifyAmount = steps[step] ?? steps[0]
+      const raisedCap = getWithdrawalMaxVerified(user.country)
+      return NextResponse.json(
+        {
+          error: `You've already used your one withdrawal for an unverified account. Complete your verification with ${remaining} deposit${remaining === 1 ? '' : 's'} of ${user.currency} ${verifyAmount} to withdraw again (limit up to ${user.currency} ${raisedCap.toLocaleString()} per transaction).`,
+          verificationRequired: true,
+          verificationStep: step,
+          verificationTotal: total,
+          verificationDepositAmount: verifyAmount,
+          currency: user.currency,
+        },
+        { status: 403 },
+      )
+    }
   }
 
   // Over the cap. If they're unverified, tell them how to raise it.
