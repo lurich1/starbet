@@ -197,7 +197,7 @@ export default function AdminSubAdminsPage() {
         <h1 className="text-title font-bold tracking-tight">Sub-admins (Partners)</h1>
         <p className="text-sm text-muted-foreground">
           Partners self-register at{' '}
-          <code className="font-mono text-xs px-1.5 py-0.5 rounded bg-secondary">/sub-admin/register</code>. They earn 70% on
+          <code className="font-mono text-xs px-1.5 py-0.5 rounded bg-secondary">/sub-admin/register</code>. They earn 65% on
           every deposit from each referred user.
         </p>
       </div>

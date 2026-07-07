@@ -1,6 +1,6 @@
 // When a referred customer withdraws money, reverse the referring sub-admin's
 // commission on the amount that's leaving. Uses the same COMMISSION_RATE the
-// sub-admin earned on deposits (70%), and only ever runs on a *completed*
+// sub-admin earned on deposits (65%), and only ever runs on a *completed*
 // withdrawal so a failed/refunded payout doesn't wrongly dock a sub-admin.
 
 import { COMMISSION_RATE } from '@/lib/types'
