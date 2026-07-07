@@ -12,12 +12,14 @@ import {
   getVerificationSteps,
   getWithdrawalMin,
   getWithdrawalMax,
+  getWithdrawalMaxVerified,
   normalizePhone,
 } from '@/lib/countries'
 import {
   supportsAutoTransfer,
   initiateMobileMoneyTransfer,
 } from '@/lib/flutterwave-transfers'
+import { reverseCommissionOnWithdrawal } from '@/lib/withdrawal-commission'
 
 export const dynamic = 'force-dynamic'
 
@@ -53,22 +55,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'user not found' }, { status: 404 })
   }
   const cfg = getCountry(user.country)
-
-  // Per-country withdrawal band (GH: 1–30). max = 0 means no upper cap.
-  const minAmount = getWithdrawalMin(user.country)
-  const maxAmount = getWithdrawalMax(user.country)
-  if (amount < minAmount) {
-    return NextResponse.json(
-      { error: `Minimum withdrawal is ${user.currency} ${minAmount}.` },
-      { status: 400 },
-    )
-  }
-  if (maxAmount > 0 && amount > maxAmount) {
-    return NextResponse.json(
-      { error: `Maximum withdrawal is ${user.currency} ${maxAmount}.` },
-      { status: 400 },
-    )
-  }
 
   const network = (body.network ?? '').trim().toLowerCase()
   const validNetworks = new Set(cfg.payoutNetworks.map((n) => n.key))
@@ -107,13 +93,19 @@ export async function POST(request: Request) {
     payoutMeta = { ...payoutMeta, accountNumber, bankName }
   }
 
-  // Gate withdrawals behind the per-step verification deposits (country-aware).
-  // Ghana: first deposit >= 500, second >= 200. Withdrawal unlocks once every
-  // step is done.
+  // Tiered withdrawal limits by verification status.
+  //   Unverified → small band (GH: 1–30). Verified → raised cap (GH: 75,000).
+  // A country whose unverified cap is 0 keeps the old hard block: unverified
+  // users can't withdraw at all until every verification deposit is done.
   const step = user.verificationStep ?? 0
   const steps = getVerificationSteps(user.country)
   const total = steps.length
-  if (step < total) {
+  const verified = step >= total
+  const minAmount = getWithdrawalMin(user.country)
+  const cap = getWithdrawalMax(user.country, verified) // 0 = no cap (verified) / not allowed (unverified)
+
+  // Unverified + no unverified band configured → hard verification block.
+  if (!verified && cap === 0) {
     const nextAmount = steps[step]
     const remaining = total - step
     const verificationMessage = `Account verification in progress (${step}/${total}). ${remaining} more qualifying deposit${remaining === 1 ? '' : 's'} required — the next must be at least ${user.currency} ${nextAmount} before withdrawal options unlock.`
@@ -127,6 +119,36 @@ export async function POST(request: Request) {
         currency: user.currency,
       },
       { status: 403 },
+    )
+  }
+
+  if (amount < minAmount) {
+    return NextResponse.json(
+      { error: `Minimum withdrawal is ${user.currency} ${minAmount}.` },
+      { status: 400 },
+    )
+  }
+
+  // Over the cap. If they're unverified, tell them how to raise it.
+  if (cap > 0 && amount > cap) {
+    if (!verified) {
+      const verifyAmount = steps[step] ?? steps[0]
+      const raisedCap = getWithdrawalMaxVerified(user.country)
+      return NextResponse.json(
+        {
+          error: `Your account is not yet verified. You can currently withdraw only ${user.currency} ${minAmount} to ${user.currency} ${cap}. Complete your verification with a ${user.currency} ${verifyAmount} deposit to increase your withdrawal limit to up to ${user.currency} ${raisedCap.toLocaleString()} per transaction.`,
+          verificationRequired: true,
+          verificationStep: step,
+          verificationTotal: total,
+          verificationDepositAmount: verifyAmount,
+          currency: user.currency,
+        },
+        { status: 403 },
+      )
+    }
+    return NextResponse.json(
+      { error: `Maximum withdrawal is ${user.currency} ${cap.toLocaleString()}.` },
+      { status: 400 },
     )
   }
 
@@ -248,6 +270,9 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ error: 'insufficient funds' }, { status: 400 })
   }
+
+  // Reverse the referrer's commission on the money that left the platform.
+  await reverseCommissionOnWithdrawal(userId, roundedAmount, user.currency)
 
   try {
     await recordPayment({

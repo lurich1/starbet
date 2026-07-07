@@ -24,6 +24,7 @@ import {
   LogOut,
   Copy,
   Check,
+  AlertCircle,
 } from 'lucide-react'
 import { MobileNav } from '@/components/mobile-nav'
 import { Button } from '@/components/ui/button'
@@ -43,6 +44,8 @@ import {
   getVerificationSteps,
   getWithdrawalMin,
   getWithdrawalMax,
+  getWithdrawalMaxUnverified,
+  getWithdrawalMaxVerified,
   isCountryCode,
   isCurrencyCode,
   normalizePhone,
@@ -104,6 +107,8 @@ function MePageInner() {
   const [loading, setLoading] = useState(true)
   const [balanceHidden, setBalanceHidden] = useState(false)
   const [withdrawOpen, setWithdrawOpen] = useState(false)
+  // "Account Not Verified" notice shown to unverified users on the small band.
+  const [verifyNoticeOpen, setVerifyNoticeOpen] = useState(false)
   const [withdrawAmount, setWithdrawAmount] = useState('')
   const [withdrawNetwork, setWithdrawNetwork] = useState<string>('mtn')
   const [withdrawPhone, setWithdrawPhone] = useState('')
@@ -201,9 +206,16 @@ function MePageInner() {
   }, [countryCfg])
 
   const balance = profile?.balance ?? 0
-  // Per-country withdrawal band (GH: 1–30). 0 = no upper cap.
+  const isVerified = currentVerificationStep >= VERIFICATION_TOTAL
+  // Tiered withdrawal band: unverified users get a small cap (GH: 1–30),
+  // verified users get the raised cap (GH: 75,000). 0 = no cap.
   const withdrawalMin = getWithdrawalMin(country)
-  const withdrawalMax = getWithdrawalMax(country)
+  const withdrawalMax = getWithdrawalMax(country, isVerified)
+  const withdrawalMaxUnverified = getWithdrawalMaxUnverified(country)
+  const withdrawalMaxVerified = getWithdrawalMaxVerified(country)
+  // A country with an unverified band (GH) lets unverified users withdraw the
+  // small amount; otherwise unverified users must verify first (NG/KE/ZA).
+  const allowsUnverifiedWithdrawal = withdrawalMaxUnverified > 0
   // Effective ceiling shown/enforced in the form: never more than the balance.
   const effectiveMax = withdrawalMax > 0 ? Math.min(withdrawalMax, balance) : balance
   const hasDeposited = !!profile?.firstDepositAt
@@ -229,8 +241,9 @@ function MePageInner() {
       setWithdrawError(null)
       setWithdrawAmount('')
       setWithdrawOpen(true)
+      if (allowsUnverifiedWithdrawal && !isVerified) setVerifyNoticeOpen(true)
     }
-  }, [profile, canWithdraw, noFundsMessage])
+  }, [profile, canWithdraw, noFundsMessage, allowsUnverifiedWithdrawal, isVerified])
 
   const depositHref = profile
     ? `/users/first-deposit?userId=${profile.id}`
@@ -251,6 +264,8 @@ function MePageInner() {
     // Pre-fill phone from saved profile so the user doesn't retype it
     setWithdrawPhone(profile?.phone ?? '')
     setWithdrawOpen(true)
+    // Unverified users on the small band get the "Account Not Verified" notice.
+    if (allowsUnverifiedWithdrawal && !isVerified) setVerifyNoticeOpen(true)
   }
 
   // Poll the charge status while the customer approves the mobile-money debit
@@ -707,6 +722,69 @@ function MePageInner() {
         activeTab="me"
       />
 
+      {/* "Account Not Verified" notice — sits above the withdraw sheet (z-70). */}
+      {verifyNoticeOpen && (
+        <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setVerifyNoticeOpen(false)}
+            aria-hidden
+          />
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            className="relative w-full max-w-md bg-card border border-border rounded-2xl p-6 shadow-popover animate-in fade-in zoom-in-95 duration-200"
+          >
+            <div className="flex items-start gap-3 mb-3">
+              <AlertCircle className="w-6 h-6 text-amber-500 shrink-0 mt-0.5" />
+              <h2 className="text-lg font-bold text-foreground">Account Not Verified</h2>
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Your account is not yet verified. You can currently withdraw only{' '}
+              <span className="font-semibold text-foreground">
+                {currency} {withdrawalMin}
+              </span>{' '}
+              to{' '}
+              <span className="font-semibold text-foreground">
+                {currency} {withdrawalMaxUnverified}
+              </span>
+              .
+            </p>
+            <p className="text-sm text-muted-foreground leading-relaxed mt-2">
+              Complete your verification with a{' '}
+              <span className="font-semibold text-foreground">
+                {currency} {verificationAmount}
+              </span>{' '}
+              deposit to increase your withdrawal limit to up to{' '}
+              <span className="font-semibold text-foreground">
+                {currency} {withdrawalMaxVerified.toLocaleString()}
+              </span>{' '}
+              per transaction.
+            </p>
+            <div className="mt-5 flex flex-col gap-2">
+              <Button
+                type="button"
+                onClick={() => {
+                  setVerifyNoticeOpen(false)
+                  void startVerificationDeposit()
+                }}
+                className="w-full h-11 bg-primary text-primary-foreground hover:bg-primary/90 font-bold"
+              >
+                Deposit {currency} {verificationAmount} to verify
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setVerifyNoticeOpen(false)}
+                className="w-full h-11 font-semibold"
+              >
+                Continue with {currency} {withdrawalMin}–{withdrawalMaxUnverified}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Withdraw sheet — always rendered, visibility toggled via style so the
           click handler can never get caught by a conditional-render race. */}
       <div
@@ -724,7 +802,7 @@ function MePageInner() {
           <div className="relative w-full max-w-md bg-card border border-border rounded-2xl p-6 shadow-popover animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-foreground">
-                {(profile.verificationStep ?? 0) < VERIFICATION_TOTAL
+                {!allowsUnverifiedWithdrawal && (profile.verificationStep ?? 0) < VERIFICATION_TOTAL
                   ? 'Account verification'
                   : 'Withdraw'}
               </h2>
@@ -758,8 +836,8 @@ function MePageInner() {
               </div>
             </div>
 
-            {(profile.verificationStep ?? 0) < VERIFICATION_TOTAL ? (
-              // Step 0 or 1 — verification deposit panel
+            {!allowsUnverifiedWithdrawal && (profile.verificationStep ?? 0) < VERIFICATION_TOTAL ? (
+              // Countries with no unverified band (NG/KE/ZA): verify-first panel
               <div className="space-y-4">
                 {/* verification banner removed per request */}
                 <div className="flex items-center justify-between text-xs text-muted-foreground px-1">

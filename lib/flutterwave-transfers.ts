@@ -17,6 +17,7 @@
 import type { CountryCode, CurrencyCode } from '@/lib/countries'
 import { findPaymentByReference, resolveWithdrawalByReference } from '@/lib/payments-store'
 import { creditBalance, addWithdrawnTotal } from '@/lib/users-store'
+import { reverseCommissionOnWithdrawal } from '@/lib/withdrawal-commission'
 
 const BASE = 'https://api.flutterwave.com/v3'
 
@@ -178,7 +179,15 @@ export async function finalizeTransfer(
   if (!resolved) return
 
   if (succeeded) {
-    if (pending.userId) await addWithdrawnTotal(pending.userId, pending.amount).catch(() => {})
+    if (pending.userId) {
+      await addWithdrawnTotal(pending.userId, pending.amount).catch(() => {})
+      // Reverse the referrer's commission on the money that left the platform.
+      await reverseCommissionOnWithdrawal(
+        pending.userId,
+        pending.amount,
+        pending.currency as CurrencyCode,
+      )
+    }
   } else {
     // Refund the reserved balance so a failed payout doesn't cost the user.
     if (pending.userId) await creditBalance(pending.userId, pending.amount).catch(() => {})

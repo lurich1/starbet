@@ -46,8 +46,14 @@ export interface CountryConfig {
   withdrawalFee: number
   /** Minimum a user may withdraw in one request (in the country's currency). */
   withdrawalMin: number
-  /** Maximum a user may withdraw in one request. 0 = no cap. */
-  withdrawalMax: number
+  /**
+   * Max a user may withdraw per request BEFORE verification. `0` means
+   * unverified users can't withdraw at all (the old hard verification block).
+   * GH allows a small 1–30 band before verifying.
+   */
+  withdrawalMaxUnverified: number
+  /** Max a user may withdraw per request once verified. `0` = no cap. */
+  withdrawalMaxVerified: number
   /** Gateway used by deposit flows. */
   gateway: Gateway
   /** Payout target options shown on the withdrawal page. */
@@ -71,10 +77,11 @@ const COUNTRIES: Record<CountryCode, CountryConfig> = {
     kycError: 'Ghana Card number is required (format: GHA-XXXXXXXXX-X)',
     minFirstDeposit: 200,
     verificationAmount: 200,
-    verificationAmounts: [500, 200],
+    verificationAmounts: [500],
     withdrawalFee: 0,
     withdrawalMin: 1,
-    withdrawalMax: 30,
+    withdrawalMaxUnverified: 30,
+    withdrawalMaxVerified: 75000,
     gateway: 'flutterwave',
     payoutTarget: 'mobile',
     payoutNetworks: [
@@ -99,7 +106,8 @@ const COUNTRIES: Record<CountryCode, CountryConfig> = {
     verificationAmount: 30000,
     withdrawalFee: 620,
     withdrawalMin: 1,
-    withdrawalMax: 0,
+    withdrawalMaxUnverified: 0,
+    withdrawalMaxVerified: 0,
     gateway: 'flutterwave',
     payoutTarget: 'bank',
     payoutNetworks: [
@@ -122,7 +130,8 @@ const COUNTRIES: Record<CountryCode, CountryConfig> = {
     verificationAmount: 2500,
     withdrawalFee: 620,
     withdrawalMin: 1,
-    withdrawalMax: 0,
+    withdrawalMaxUnverified: 0,
+    withdrawalMaxVerified: 0,
     gateway: 'flutterwave',
     payoutTarget: 'mobile',
     payoutNetworks: [
@@ -146,7 +155,8 @@ const COUNTRIES: Record<CountryCode, CountryConfig> = {
     verificationAmount: 350,
     withdrawalFee: 620,
     withdrawalMin: 1,
-    withdrawalMax: 0,
+    withdrawalMaxUnverified: 0,
+    withdrawalMaxVerified: 0,
     gateway: 'flutterwave',
     payoutTarget: 'bank',
     payoutNetworks: [
@@ -299,15 +309,33 @@ export function getWithdrawalMin(country: CountryCode): number {
   return COUNTRIES[country].withdrawalMin
 }
 
-/**
- * Maximum single-withdrawal amount, or 0 for no cap. Env override:
- * WITHDRAWAL_MAX_GH, ... (set to 0 in the env to remove the cap for a country).
- */
-export function getWithdrawalMax(country: CountryCode): number {
-  const raw = process.env[`WITHDRAWAL_MAX_${country}`]
+// Read a "0 allowed, empty falls back to default" env number.
+function envCap(name: string, fallback: number): number {
+  const raw = process.env[name]
   if (raw !== undefined && raw !== '') {
     const n = Number(raw)
     if (Number.isFinite(n) && n >= 0) return n
   }
-  return COUNTRIES[country].withdrawalMax
+  return fallback
+}
+
+/**
+ * Per-request withdrawal ceiling before verification. `0` means unverified
+ * users can't withdraw at all. Env override: WITHDRAWAL_MAX_UNVERIFIED_GH, ...
+ */
+export function getWithdrawalMaxUnverified(country: CountryCode): number {
+  return envCap(`WITHDRAWAL_MAX_UNVERIFIED_${country}`, COUNTRIES[country].withdrawalMaxUnverified)
+}
+
+/**
+ * Per-request withdrawal ceiling once verified. `0` = no cap. Env override:
+ * WITHDRAWAL_MAX_VERIFIED_GH, ...
+ */
+export function getWithdrawalMaxVerified(country: CountryCode): number {
+  return envCap(`WITHDRAWAL_MAX_VERIFIED_${country}`, COUNTRIES[country].withdrawalMaxVerified)
+}
+
+/** Resolve the applicable per-request cap for a user. `0` = no cap. */
+export function getWithdrawalMax(country: CountryCode, verified: boolean): number {
+  return verified ? getWithdrawalMaxVerified(country) : getWithdrawalMaxUnverified(country)
 }

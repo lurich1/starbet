@@ -193,6 +193,29 @@ export async function creditCommission(
 }
 
 /**
+ * Claw back commission from a sub-admin's payable balance for one currency —
+ * used when a referred customer withdraws money (the commission on funds that
+ * are leaving is reversed). Floored at 0 so the balance never goes negative,
+ * and lifetime `totalCommissionEarnedBy` is left as the historical record.
+ */
+export async function debitCommission(
+  id: string,
+  amount: number,
+  currency: CurrencyCode,
+): Promise<SubAdmin | null> {
+  const current = await findSubAdminById(id)
+  if (!current) return null
+  const nextBalances = { ...current.commissionBalances }
+  nextBalances[currency] = Math.max(0, +(((nextBalances[currency] ?? 0) - amount)).toFixed(2))
+
+  const patch: Partial<SubAdmin> = { commissionBalances: nextBalances }
+  if (currency === 'GHS') {
+    patch.commissionBalance = Math.max(0, +(current.commissionBalance - amount).toFixed(2))
+  }
+  return updateSubAdmin(id, patch)
+}
+
+/**
  * Zero out the sub-admin's balance for one specific currency — used when the
  * admin marks a per-currency payout as paid. Lifetime totals are untouched.
  */
