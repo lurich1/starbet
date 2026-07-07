@@ -192,21 +192,32 @@ export async function createStandardPayment(input: {
   phone?: string
   redirectUrl: string
 }): Promise<{ link: string }> {
+  // Flutterwave rejects the request ("required parameters missing") if any of
+  // tx_ref / amount / currency / redirect_url / customer.email is empty. Guard
+  // each so a user with a blank email/name can still check out.
+  const email = input.email?.trim() || `user-${input.reference}@starbet.app`
+  const amount = Number(input.amount)
+  const payload = {
+    tx_ref: input.reference,
+    amount,
+    currency: input.currency,
+    redirect_url: input.redirectUrl,
+    customer: {
+      email,
+      name: input.fullname?.trim() || 'Customer',
+      ...(input.phone ? { phonenumber: input.phone } : {}),
+    },
+    customizations: {
+      title: 'Star Bet',
+      description: 'Wallet deposit',
+    },
+    payment_options: PAYMENT_OPTIONS[input.country] ?? 'card',
+  }
+
   const res = await flwFetch(`${BASE}/payments`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({
-      tx_ref: input.reference,
-      amount: input.amount,
-      currency: input.currency,
-      redirect_url: input.redirectUrl,
-      customer: {
-        email: input.email,
-        name: input.fullname || 'Customer',
-        ...(input.phone ? { phonenumber: input.phone } : {}),
-      },
-      payment_options: PAYMENT_OPTIONS[input.country] ?? 'card',
-    }),
+    body: JSON.stringify(payload),
     cache: 'no-store',
   })
   const raw = await res.text()
@@ -217,6 +228,11 @@ export async function createStandardPayment(input: {
     /* non-JSON */
   }
   if (!res.ok || body.status !== 'success' || !body.data?.link) {
+    console.error('[flutterwave] payment init error', {
+      status: res.status,
+      payload: { ...payload, customer: { ...payload.customer, email: '***' } },
+      response: raw.slice(0, 500),
+    })
     const detail = body.message || raw.slice(0, 300) || `HTTP ${res.status}`
     throw new Error(`Flutterwave payment init failed (HTTP ${res.status}): ${detail}`)
   }

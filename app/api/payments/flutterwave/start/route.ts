@@ -22,7 +22,12 @@ function sanitizeReturnPath(raw: string | undefined): string {
 
 function originFromRequest(req: Request): string {
   const explicit = process.env.NEXT_PUBLIC_APP_URL?.trim()
-  if (explicit) return explicit.replace(/\/$/, '')
+  if (explicit) {
+    // Flutterwave needs an absolute redirect_url; prepend https:// if the env
+    // value was set without a protocol (a common misconfig on Vercel).
+    const withProto = /^https?:\/\//i.test(explicit) ? explicit : `https://${explicit}`
+    return withProto.replace(/\/$/, '')
+  }
   const url = new URL(req.url)
   return `${url.protocol}//${url.host}`
 }
