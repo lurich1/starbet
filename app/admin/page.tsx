@@ -41,18 +41,36 @@ interface StatsResponse {
   }[]
 }
 
+interface WithdrawalRow {
+  id: string
+  reference: string
+  amount: number
+  currency: string
+  status: 'pending' | 'success' | 'failed' | 'cancelled'
+  createdAt: string
+  user: { id: string; name: string; email: string } | null
+}
+
 export default function AdminOverviewPage() {
   const [stats, setStats] = useState<StatsResponse | null>(null)
+  const [withdrawals, setWithdrawals] = useState<WithdrawalRow[]>([])
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     const load = async () => {
       try {
-        const res = await fetch('/api/admin/stats', { cache: 'no-store' })
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const data = (await res.json()) as StatsResponse
+        const [statsRes, wdRes] = await Promise.all([
+          fetch('/api/admin/stats', { cache: 'no-store' }),
+          fetch('/api/admin/deposits?type=withdrawal', { cache: 'no-store' }),
+        ])
+        if (!statsRes.ok) throw new Error(`HTTP ${statsRes.status}`)
+        const data = (await statsRes.json()) as StatsResponse
         if (!cancelled) setStats(data)
+        if (wdRes.ok) {
+          const wd = (await wdRes.json()) as { payments?: WithdrawalRow[] }
+          if (!cancelled) setWithdrawals(wd.payments ?? [])
+        }
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : String(e))
       }
@@ -126,6 +144,57 @@ export default function AdminOverviewPage() {
           stakes={stats.money.stakesByCurrency}
           returns={stats.money.returnsByCurrency}
         />
+      </div>
+
+      {/* Recent withdrawals */}
+      <div className="bg-card border border-border rounded-xl shadow-card overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <h2 className="font-semibold text-title">Recent withdrawals</h2>
+          <Link
+            href="/admin/deposits"
+            className="text-xs font-medium text-primary hover:underline inline-flex items-center gap-1"
+          >
+            All payments <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+        {withdrawals.length === 0 ? (
+          <p className="p-6 text-center text-sm text-muted-foreground">No withdrawals yet.</p>
+        ) : (
+          <>
+            <div className="hidden md:grid grid-cols-[1fr_160px_140px_110px] gap-3 px-4 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground border-b border-border bg-secondary/40">
+              <span>User</span>
+              <span>Requested</span>
+              <span className="text-right">Amount</span>
+              <span className="text-right">Status</span>
+            </div>
+            <ul className="divide-y divide-border">
+              {withdrawals.slice(0, 10).map((w) => (
+                <li key={w.id} className="px-4 py-3">
+                  <div className="md:grid md:grid-cols-[1fr_160px_140px_110px] md:gap-3 md:items-center flex flex-col gap-1">
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate">{w.user?.name ?? '—'}</p>
+                      <p className="text-xs text-muted-foreground truncate">{w.user?.email ?? ''}</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground tabular-nums">
+                      {new Date(w.createdAt).toLocaleString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </p>
+                    <p className="md:text-right text-sm font-bold tabular-nums">
+                      {w.currency} {formatMoney(w.amount, w.currency)}
+                    </p>
+                    <div className="md:text-right">
+                      <WithdrawalStatus status={w.status} />
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </div>
 
       {/* Chart + Top leagues */}
@@ -342,5 +411,19 @@ function Kpi({
       <p className={`text-2xl font-extrabold tabular-nums tracking-tight ${color}`}>{value}</p>
       {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
     </div>
+  )
+}
+
+function WithdrawalStatus({ status }: { status: 'pending' | 'success' | 'failed' | 'cancelled' }) {
+  const map = {
+    success: { label: 'Paid', cls: 'bg-success/10 text-success border-success/20' },
+    pending: { label: 'Pending', cls: 'bg-warning/10 text-warning border-warning/20' },
+    failed: { label: 'Failed', cls: 'bg-destructive/10 text-destructive border-destructive/20' },
+    cancelled: { label: 'Cancelled', cls: 'bg-secondary text-muted-foreground border-border' },
+  }[status]
+  return (
+    <span className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full border ${map.cls}`}>
+      {map.label}
+    </span>
   )
 }
