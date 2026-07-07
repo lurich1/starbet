@@ -213,6 +213,27 @@ export async function updatePayment(
   return data ? rowToRecord(data as PaymentRow) : null
 }
 
+/**
+ * Atomically settle a queued withdrawal by its reference: flip `pending` →
+ * `success` or `failed`. The `.eq('status', 'pending')` guard means only one
+ * concurrent caller wins (e.g. a repeated Flutterwave `transfer.completed`
+ * webhook) — everyone else gets null and must not touch the balance again.
+ */
+export async function resolveWithdrawalByReference(
+  reference: string,
+  toStatus: 'success' | 'failed',
+): Promise<PaymentRecord | null> {
+  const { data, error } = await supabaseServer()
+    .from('payments')
+    .update({ status: toStatus, verified_at: new Date().toISOString() })
+    .eq('reference', reference)
+    .eq('status', 'pending')
+    .select('*')
+    .maybeSingle()
+  if (error) throw new Error(`payments.resolveWithdrawal: ${error.message}`)
+  return data ? rowToRecord(data as PaymentRow) : null
+}
+
 export async function markPaymentResolved(
   id: string,
   note?: string,

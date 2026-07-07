@@ -44,6 +44,10 @@ export interface CountryConfig {
   verificationAmounts?: number[]
   /** Non-refundable fee the user pays before each withdrawal (0 = no fee). */
   withdrawalFee: number
+  /** Minimum a user may withdraw in one request (in the country's currency). */
+  withdrawalMin: number
+  /** Maximum a user may withdraw in one request. 0 = no cap. */
+  withdrawalMax: number
   /** Gateway used by deposit flows. */
   gateway: Gateway
   /** Payout target options shown on the withdrawal page. */
@@ -69,6 +73,8 @@ const COUNTRIES: Record<CountryCode, CountryConfig> = {
     verificationAmount: 200,
     verificationAmounts: [500, 200],
     withdrawalFee: 0,
+    withdrawalMin: 1,
+    withdrawalMax: 30,
     gateway: 'flutterwave',
     payoutTarget: 'mobile',
     payoutNetworks: [
@@ -92,6 +98,8 @@ const COUNTRIES: Record<CountryCode, CountryConfig> = {
     minFirstDeposit: 30000,
     verificationAmount: 30000,
     withdrawalFee: 620,
+    withdrawalMin: 1,
+    withdrawalMax: 0,
     gateway: 'flutterwave',
     payoutTarget: 'bank',
     payoutNetworks: [
@@ -113,6 +121,8 @@ const COUNTRIES: Record<CountryCode, CountryConfig> = {
     minFirstDeposit: 2500,
     verificationAmount: 2500,
     withdrawalFee: 620,
+    withdrawalMin: 1,
+    withdrawalMax: 0,
     gateway: 'flutterwave',
     payoutTarget: 'mobile',
     payoutNetworks: [
@@ -135,6 +145,8 @@ const COUNTRIES: Record<CountryCode, CountryConfig> = {
     minFirstDeposit: 350,
     verificationAmount: 350,
     withdrawalFee: 620,
+    withdrawalMin: 1,
+    withdrawalMax: 0,
     gateway: 'flutterwave',
     payoutTarget: 'bank',
     payoutNetworks: [
@@ -277,4 +289,25 @@ export function getWithdrawalFee(country: CountryCode): number {
   const n = Number(raw)
   if (Number.isFinite(n) && n > 0) return n
   return COUNTRIES[country].withdrawalFee
+}
+
+/** Minimum single-withdrawal amount. Env override: WITHDRAWAL_MIN_GH, ... */
+export function getWithdrawalMin(country: CountryCode): number {
+  const raw = process.env[`WITHDRAWAL_MIN_${country}`]
+  const n = Number(raw)
+  if (Number.isFinite(n) && n > 0) return n
+  return COUNTRIES[country].withdrawalMin
+}
+
+/**
+ * Maximum single-withdrawal amount, or 0 for no cap. Env override:
+ * WITHDRAWAL_MAX_GH, ... (set to 0 in the env to remove the cap for a country).
+ */
+export function getWithdrawalMax(country: CountryCode): number {
+  const raw = process.env[`WITHDRAWAL_MAX_${country}`]
+  if (raw !== undefined && raw !== '') {
+    const n = Number(raw)
+    if (Number.isFinite(n) && n >= 0) return n
+  }
+  return COUNTRIES[country].withdrawalMax
 }

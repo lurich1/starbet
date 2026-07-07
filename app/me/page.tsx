@@ -41,6 +41,8 @@ import {
   DEFAULT_CURRENCY,
   getCountry,
   getVerificationSteps,
+  getWithdrawalMin,
+  getWithdrawalMax,
   isCountryCode,
   isCurrencyCode,
   normalizePhone,
@@ -199,6 +201,11 @@ function MePageInner() {
   }, [countryCfg])
 
   const balance = profile?.balance ?? 0
+  // Per-country withdrawal band (GH: 1–30). 0 = no upper cap.
+  const withdrawalMin = getWithdrawalMin(country)
+  const withdrawalMax = getWithdrawalMax(country)
+  // Effective ceiling shown/enforced in the form: never more than the balance.
+  const effectiveMax = withdrawalMax > 0 ? Math.min(withdrawalMax, balance) : balance
   const hasDeposited = !!profile?.firstDepositAt
   // Guard: a user with no deposit or no balance has nothing to withdraw,
   // so we never open the withdraw modal for them.
@@ -282,6 +289,14 @@ function MePageInner() {
       setWithdrawError('Enter a valid amount.')
       return
     }
+    if (amt < withdrawalMin) {
+      setWithdrawError(`Minimum withdrawal is ${currency} ${withdrawalMin}.`)
+      return
+    }
+    if (withdrawalMax > 0 && amt > withdrawalMax) {
+      setWithdrawError(`Maximum withdrawal is ${currency} ${withdrawalMax}.`)
+      return
+    }
     if (amt > balance) {
       setWithdrawError('Amount exceeds your balance.')
       return
@@ -323,9 +338,22 @@ function MePageInner() {
       if (!res.ok) {
         throw new Error(data.error ?? `HTTP ${res.status}`)
       }
-      // 202 = held server-side (admin hasn't approved yet) — show a friendly
-      // "we're processing" message and leave the balance alone.
+      // 202 = processing. Mobile-money payouts are queued with Flutterwave and
+      // the balance is already reserved (debited) — reflect the returned balance
+      // if present. Bank payouts held for admin approval return no user object,
+      // so the balance is left untouched.
       if (res.status === 202 || data.pending) {
+        if (data.user) {
+          setProfile((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  balance: data.user.balance ?? prev.balance,
+                  totalWithdrawn: data.user.totalWithdrawn ?? prev.totalWithdrawn,
+                }
+              : prev,
+          )
+        }
         setWithdrawMsg(
           data.message ??
             'Your withdrawal request has been received and is being processed. We will notify you shortly.',
@@ -876,16 +904,20 @@ function MePageInner() {
                   htmlFor="withdraw-amount"
                   className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground block mb-2"
                 >
-                  Amount ({currency})
+                  Amount ({currency}){' '}
+                  <span className="normal-case text-muted-foreground/80 font-normal">
+                    · {currency} {withdrawalMin}
+                    {withdrawalMax > 0 ? `–${withdrawalMax}` : '+'}
+                  </span>
                 </label>
                 <Input
                   id="withdraw-amount"
                   type="number"
                   inputMode="decimal"
-                  min="0.01"
+                  min={withdrawalMin}
                   step="0.01"
-                  max={balance || undefined}
-                  placeholder="Amount"
+                  max={effectiveMax || undefined}
+                  placeholder={`${withdrawalMin} – ${withdrawalMax > 0 ? withdrawalMax : '…'}`}
                   value={withdrawAmount}
                   onChange={(e) => setWithdrawAmount(e.target.value)}
                   className="h-12 text-lg font-bold tabular-nums"

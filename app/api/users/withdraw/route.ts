@@ -1,7 +1,23 @@
 import { NextResponse } from 'next/server'
-import { findUserById, recordWithdrawal, setUserPhone } from '@/lib/users-store'
+import {
+  findUserById,
+  recordWithdrawal,
+  setUserPhone,
+  debitBalance,
+  creditBalance,
+} from '@/lib/users-store'
 import { recordPayment } from '@/lib/payments-store'
-import { getCountry, getVerificationSteps, normalizePhone } from '@/lib/countries'
+import {
+  getCountry,
+  getVerificationSteps,
+  getWithdrawalMin,
+  getWithdrawalMax,
+  normalizePhone,
+} from '@/lib/countries'
+import {
+  supportsAutoTransfer,
+  initiateMobileMoneyTransfer,
+} from '@/lib/flutterwave-transfers'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,6 +53,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'user not found' }, { status: 404 })
   }
   const cfg = getCountry(user.country)
+
+  // Per-country withdrawal band (GH: 1–30). max = 0 means no upper cap.
+  const minAmount = getWithdrawalMin(user.country)
+  const maxAmount = getWithdrawalMax(user.country)
+  if (amount < minAmount) {
+    return NextResponse.json(
+      { error: `Minimum withdrawal is ${user.currency} ${minAmount}.` },
+      { status: 400 },
+    )
+  }
+  if (maxAmount > 0 && amount > maxAmount) {
+    return NextResponse.json(
+      { error: `Maximum withdrawal is ${user.currency} ${maxAmount}.` },
+      { status: 400 },
+    )
+  }
 
   const network = (body.network ?? '').trim().toLowerCase()
   const validNetworks = new Set(cfg.payoutNetworks.map((n) => n.key))
@@ -102,6 +134,85 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'make a deposit before withdrawing' }, { status: 400 })
   }
 
+  const roundedAmount = +amount.toFixed(2)
+
+  // ---- Mobile-money countries (GH/KE): auto-pay via Flutterwave Transfers ----
+  // Reserve the balance up front, queue the payout, and let the
+  // `transfer.completed` webhook settle it (or refund on failure).
+  if (cfg.payoutTarget === 'mobile' && supportsAutoTransfer(user.country)) {
+    const phone = (payoutMeta.phone as string | undefined) ?? ''
+    const reference = `PB-WDR-${userId.slice(0, 8)}-${Date.now()}`
+
+    // Debit first so the same balance can't be withdrawn twice while the
+    // payout is in flight. Refunded by the webhook if the transfer fails.
+    const debit = await debitBalance(userId, roundedAmount)
+    if ('error' in debit) {
+      if (debit.error === 'not-found') {
+        return NextResponse.json({ error: 'user not found' }, { status: 404 })
+      }
+      return NextResponse.json({ error: 'insufficient funds' }, { status: 400 })
+    }
+
+    const transfer = await initiateMobileMoneyTransfer({
+      reference,
+      amount: roundedAmount,
+      currency: user.currency,
+      country: user.country,
+      network,
+      phone,
+      beneficiaryName: user.name,
+      narration: 'Prime Bet withdrawal',
+    })
+
+    if (!transfer.ok) {
+      // Gateway declined at queue time — give the money straight back and log
+      // a failed row so the attempt still shows in the user's history.
+      await creditBalance(userId, roundedAmount).catch((e) =>
+        console.error('[withdraw] refund after failed transfer init failed:', e),
+      )
+      await recordPayment({
+        userId,
+        reference,
+        amount: roundedAmount,
+        type: 'withdrawal',
+        status: 'failed',
+        provider: 'flutterwave',
+        currency: user.currency,
+        metadata: { ...payoutMeta, transferError: transfer.message },
+      }).catch((e) => console.error('[withdraw] failed-transfer ledger write failed:', e))
+
+      return NextResponse.json(
+        { error: 'We could not start your payout. Please try again shortly.' },
+        { status: 502 },
+      )
+    }
+
+    await recordPayment({
+      userId,
+      reference,
+      amount: roundedAmount,
+      type: 'withdrawal',
+      status: 'pending',
+      provider: 'flutterwave',
+      currency: user.currency,
+      metadata: { ...payoutMeta, flwTransferId: transfer.flwId, flwStatus: transfer.status },
+    }).catch((e) => console.error('[withdraw] pending transfer ledger write failed:', e))
+
+    return NextResponse.json(
+      {
+        message: PROCESSING_MESSAGE,
+        pending: true,
+        user: {
+          id: debit.user.id,
+          balance: debit.user.balance ?? 0,
+          totalWithdrawn: debit.user.totalWithdrawn ?? 0,
+        },
+      },
+      { status: 202 },
+    )
+  }
+
+  // ---- Bank countries (NG/ZA): manual admin payout (unchanged) -------------
   // Even after verification, the admin still has to flip the withdrawal_approved
   // switch. Externally we present this as "we're processing your request".
   if (!user.withdrawalApproved) {
@@ -122,7 +233,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: PROCESSING_MESSAGE, pending: true }, { status: 202 })
   }
 
-  const result = await recordWithdrawal(userId, +amount.toFixed(2))
+  const result = await recordWithdrawal(userId, roundedAmount)
   if ('error' in result) {
     if (result.error === 'not-found') {
       return NextResponse.json({ error: 'user not found' }, { status: 404 })

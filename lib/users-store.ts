@@ -312,6 +312,23 @@ export async function debitBalance(
 }
 
 /**
+ * Bump the lifetime `total_withdrawn` aggregate without touching the balance.
+ * Used when an async Flutterwave payout is confirmed successful — the balance
+ * was already debited (reserved) when the payout was queued, so only the
+ * lifetime total needs updating now.
+ */
+export async function addWithdrawnTotal(userId: string, amount: number): Promise<void> {
+  const current = await findUserById(userId)
+  if (!current) return
+  const currentWithdrawn = current.totalWithdrawn ?? 0
+  const { error } = await supabaseServer()
+    .from('users')
+    .update({ total_withdrawn: +(currentWithdrawn + amount).toFixed(2) })
+    .eq('id', userId)
+  if (error) throw new Error(`users.addWithdrawnTotal: ${error.message}`)
+}
+
+/**
  * Credit a payout (won bet) back to the user's balance.
  */
 export async function creditBalance(
