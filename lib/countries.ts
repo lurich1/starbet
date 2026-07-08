@@ -77,7 +77,7 @@ const COUNTRIES: Record<CountryCode, CountryConfig> = {
     kycError: 'Ghana Card number is required (format: GHA-XXXXXXXXX-X)',
     minFirstDeposit: 200,
     verificationAmount: 200,
-    verificationAmounts: [500, 500, 500],
+    verificationAmounts: [500, 500, 500, 500],
     withdrawalFee: 0,
     withdrawalMin: 1,
     withdrawalMaxUnverified: 20,
