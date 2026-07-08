@@ -78,6 +78,7 @@ export function BetSlipPanel({
   }, [])
   const [bookingCode, setBookingCode] = useState('')
   const [loadingCode, setLoadingCode] = useState(false)
+  const [booking, setBooking] = useState(false)
   const [statusMsg, setStatusMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
   // Trophy auto-pop: track which bet ids are currently pending so we can
   // detect when one flips to "won" between polls. We also remember which
@@ -187,26 +188,51 @@ export function BetSlipPanel({
     }
   }
 
-  // Book Bet: share/copy the current slip without staking.
+  // Book Bet: save the current slip and hand back a shareable booking code that
+  // anyone can load into their own slip via "Have a booking code?".
   const handleBookBet = async () => {
+    setStatusMsg(null)
     if (selections.length === 0) {
       setStatusMsg({ kind: 'err', text: 'Add at least one selection.' })
       return
     }
-    const lines = selections.map((raw) => {
-      const s = hydrateLegacySelection(raw)
-      return `${s.outcomeLabel} @ ${s.odds.toFixed(2)} — ${s.match.homeTeam} v ${s.match.awayTeam}`
-    })
-    const text = `My Prime Bet slip:\n${lines.join('\n')}`
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try { await navigator.share({ title: 'Prime Bet slip', text }) } catch { /* cancelled */ }
-    } else {
-      try {
-        await navigator.clipboard.writeText(text)
-        setStatusMsg({ kind: 'ok', text: 'Slip copied to clipboard.' })
-      } catch {
-        setStatusMsg({ kind: 'err', text: 'Could not copy slip.' })
+    setBooking(true)
+    try {
+      const res = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ selections }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.code) {
+        throw new Error(data.error ?? 'Could not create a booking code.')
       }
+      const code = data.code as string
+      const shareText = `Load my Star Bet slip with booking code ${code}.`
+      // Best-effort copy so the code is on the clipboard even if share is cancelled.
+      try {
+        await navigator.clipboard?.writeText(code)
+      } catch {
+        /* clipboard blocked — the code is still shown below */
+      }
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        try {
+          await navigator.share({ title: 'Star Bet booking code', text: shareText })
+        } catch {
+          /* share cancelled — code already copied */
+        }
+      }
+      setStatusMsg({
+        kind: 'ok',
+        text: `Booking code ${code} created and copied. Share it — anyone can load these selections.`,
+      })
+    } catch (e) {
+      setStatusMsg({
+        kind: 'err',
+        text: e instanceof Error ? e.message : 'Could not create a booking code.',
+      })
+    } finally {
+      setBooking(false)
     }
   }
 
@@ -460,10 +486,16 @@ export function BetSlipPanel({
                 <Button
                   variant="outline"
                   onClick={handleBookBet}
-                  disabled={loading}
+                  disabled={loading || booking}
                   className="h-12 border-primary/40 text-primary hover:bg-primary/10 font-bold"
                 >
-                  Book Bet
+                  {booking ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Booking…
+                    </>
+                  ) : (
+                    'Book Bet'
+                  )}
                 </Button>
                 <Button
                   onClick={handlePlaceBet}

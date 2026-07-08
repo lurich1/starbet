@@ -8,6 +8,7 @@ import {
   findBetByCode,
   generateUniqueCode,
 } from '@/lib/bets-store'
+import { findBookingByCode } from '@/lib/bookings-store'
 import { creditBalance, debitBalance, findUserById } from '@/lib/users-store'
 import { checkRecentDeposit, DEPOSIT_REQUIRED_MESSAGE } from '@/lib/deposit-gate'
 import { ADMIN_COOKIE, isValidSessionCookie } from '@/lib/admin-auth'
@@ -30,10 +31,30 @@ export async function GET(request: Request) {
   // how betting shops settle tickets across counters.
   if (code) {
     const bet = await findBetByCode(code)
-    if (!bet) {
-      return NextResponse.json({ error: 'code not found' }, { status: 404 })
+    if (bet) {
+      return NextResponse.json({ bet })
     }
-    return NextResponse.json({ bet })
+    // Fall back to a "Book Bet" booking code (saved slip, no stake/user). Return
+    // it in the same `{ bet }` shape so the client loads its selections normally.
+    const bookingSelections = await findBookingByCode(code)
+    if (bookingSelections) {
+      const upper = code.trim().toUpperCase()
+      const totalOdds = bookingSelections.reduce((acc, s) => acc * Number(s.odds || 1), 1)
+      return NextResponse.json({
+        bet: {
+          id: `booking-${upper}`,
+          code: upper,
+          placedAt: new Date().toISOString(),
+          stake: 0,
+          totalOdds: Number.isFinite(totalOdds) ? +totalOdds.toFixed(4) : 1,
+          potentialWin: 0,
+          status: 'pending',
+          selections: bookingSelections,
+          isBooking: true,
+        },
+      })
+    }
+    return NextResponse.json({ error: 'code not found' }, { status: 404 })
   }
 
   // A user can list THEIR OWN bets by passing their userId.
