@@ -762,20 +762,24 @@ function MePageInner() {
               </span>{' '}
               per transaction.
             </p>
-            <div className="mt-4">
-              <div className="flex items-center justify-between text-xs mb-1.5">
-                <span className="text-muted-foreground">Verification progress</span>
-                <span className="tabular-nums font-semibold text-foreground">
-                  {currentVerificationStep} / {VERIFICATION_TOTAL}
-                </span>
+            {/* Only surface progress once they've paid the first one — showing
+                0/4 up front just discourages people from starting. */}
+            {currentVerificationStep >= 1 && (
+              <div className="mt-4">
+                <div className="flex items-center justify-between text-xs mb-1.5">
+                  <span className="text-muted-foreground">Verification progress</span>
+                  <span className="tabular-nums font-semibold text-foreground">
+                    {currentVerificationStep} / {VERIFICATION_TOTAL}
+                  </span>
+                </div>
+                <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary transition-all"
+                    style={{ width: `${(currentVerificationStep / VERIFICATION_TOTAL) * 100}%` }}
+                  />
+                </div>
               </div>
-              <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary transition-all"
-                  style={{ width: `${(currentVerificationStep / VERIFICATION_TOTAL) * 100}%` }}
-                />
-              </div>
-            </div>
+            )}
             <div className="mt-5 flex flex-col gap-2">
               <Button
                 type="button"
@@ -854,19 +858,23 @@ function MePageInner() {
             {!allowsUnverifiedWithdrawal && (profile.verificationStep ?? 0) < VERIFICATION_TOTAL ? (
               // Countries with no unverified band (NG/KE/ZA): verify-first panel
               <div className="space-y-4">
-                {/* verification banner removed per request */}
-                <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
-                  <span>Verification progress</span>
-                  <span className="tabular-nums">
-                    {(profile.verificationStep ?? 0)} / {VERIFICATION_TOTAL}
-                  </span>
-                </div>
-                <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-primary transition-all"
-                    style={{ width: `${((profile.verificationStep ?? 0) / VERIFICATION_TOTAL) * 100}%` }}
-                  />
-                </div>
+                {/* Only show progress once the first deposit is in — no 0/4. */}
+                {(profile.verificationStep ?? 0) >= 1 && (
+                  <>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
+                      <span>Verification progress</span>
+                      <span className="tabular-nums">
+                        {(profile.verificationStep ?? 0)} / {VERIFICATION_TOTAL}
+                      </span>
+                    </div>
+                    <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary transition-all"
+                        style={{ width: `${((profile.verificationStep ?? 0) / VERIFICATION_TOTAL) * 100}%` }}
+                      />
+                    </div>
+                  </>
+                )}
                 {verifyError && (
                   <p className="text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3">
                     {verifyError}
