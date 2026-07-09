@@ -49,6 +49,7 @@ export default function AdminSubAdminsPage() {
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [busy, setBusy] = useState<Set<string>>(new Set())
+  const [resetting, setResetting] = useState(false)
 
   const load = async () => {
     setError(null)
@@ -89,6 +90,37 @@ export default function AdminSubAdminsPage() {
       else next.delete(id)
       return next
     })
+
+  // Destructive: wipe all commission history + zero every partner's balances.
+  // Two confirms + a typed keyword so it can't happen by accident.
+  const handleResetAll = async () => {
+    if (
+      !confirm(
+        'Reset ALL commissions? This deletes every commission record and sets every partner’s balance and lifetime earnings to 0. This cannot be undone.',
+      )
+    ) {
+      return
+    }
+    const typed = prompt('Type RESET to confirm wiping all commissions:')
+    if ((typed ?? '').trim().toUpperCase() !== 'RESET') return
+
+    setResetting(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/admin/commissions/reset', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`)
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setResetting(false)
+    }
+  }
 
   const handleToggleApprove = async (row: SubAdminRow) => {
     setBusyFor(row.id, true)
@@ -235,13 +267,30 @@ export default function AdminSubAdminsPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-5 max-w-6xl">
-      <div>
-        <h1 className="text-title font-bold tracking-tight">Sub-admins (Partners)</h1>
-        <p className="text-sm text-muted-foreground">
-          Partners self-register at{' '}
-          <code className="font-mono text-xs px-1.5 py-0.5 rounded bg-secondary">/sub-admin/register</code>. They earn 65% on
-          every deposit from each referred user.
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-title font-bold tracking-tight">Sub-admins (Partners)</h1>
+          <p className="text-sm text-muted-foreground">
+            Partners self-register at{' '}
+            <code className="font-mono text-xs px-1.5 py-0.5 rounded bg-secondary">/sub-admin/register</code>. They earn 65% on
+            every deposit from each referred user.
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleResetAll}
+          disabled={resetting}
+          className="shrink-0 h-9 gap-1.5 text-destructive border-destructive/40 hover:bg-destructive/10"
+          title="Delete all commission history and zero every partner's balances"
+        >
+          {resetting ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Eraser className="w-4 h-4" />
+          )}
+          <span className="hidden sm:inline">Reset all commissions</span>
+        </Button>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">

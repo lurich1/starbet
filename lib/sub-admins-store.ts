@@ -232,6 +232,39 @@ export async function clearCommissionBalance(
   return updateSubAdmin(id, patch)
 }
 
+/**
+ * Fresh start for every partner: delete all commission history rows and zero
+ * every sub-admin's payable balances. When `keepLifetime` is true the lifetime
+ * "total earned" figures are preserved; otherwise everything resets to 0.
+ * Returns how many commission rows were removed.
+ */
+export async function resetAllCommissions(
+  opts: { keepLifetime?: boolean } = {},
+): Promise<{ deleted: number }> {
+  const sb = supabaseServer()
+
+  // Supabase requires a filter on delete/update — `id is not null` matches all.
+  const { data: deletedRows, error: delErr } = await sb
+    .from('commissions')
+    .delete()
+    .not('id', 'is', null)
+    .select('id')
+  if (delErr) throw new Error(`commissions.deleteAll: ${delErr.message}`)
+
+  const patch: Record<string, unknown> = {
+    commission_balance: 0,
+    commission_balances: {},
+  }
+  if (!opts.keepLifetime) {
+    patch.total_commission_earned = 0
+    patch.total_commission_earned_by = {}
+  }
+  const { error: updErr } = await sb.from('sub_admins').update(patch).not('id', 'is', null)
+  if (updErr) throw new Error(`sub_admins.resetCommissions: ${updErr.message}`)
+
+  return { deleted: deletedRows?.length ?? 0 }
+}
+
 export async function deleteSubAdmin(id: string): Promise<boolean> {
   const { error, count } = await supabaseServer()
     .from('sub_admins')
