@@ -12,6 +12,7 @@ import {
   Users,
   Wallet,
   Banknote,
+  Coins,
   AlertTriangle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -268,7 +269,7 @@ export default function SubAdminDashboardPage() {
         </section>
 
         {/* KPI tiles */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <Kpi
             icon={<Users className="w-4 h-4 text-primary" />}
             label="Referrals"
@@ -277,10 +278,16 @@ export default function SubAdminDashboardPage() {
           />
           <Kpi
             icon={<Wallet className="w-4 h-4 text-success" />}
+            label="Commission balance"
+            value={formatCurrencyMap(sa.commissionBalances)}
+            sub="payable now"
+            tone="good"
+          />
+          <Kpi
+            icon={<Coins className="w-4 h-4 text-muted-foreground" />}
             label="Today's commission"
             value={formatCurrencyMap(todayCommissions)}
             sub={`${todayCount} deposit${todayCount === 1 ? '' : 's'} today`}
-            tone="good"
           />
           <Kpi
             icon={<Banknote className="w-4 h-4 text-muted-foreground" />}
