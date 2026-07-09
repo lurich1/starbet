@@ -8,6 +8,7 @@ import {
   Trash2,
   Search,
   Check,
+  Eraser,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -138,6 +139,46 @@ export default function AdminSubAdminsPage() {
             commissionBalance: currency === 'GHS' ? 0 : r.commissionBalance,
           }
         }),
+      )
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusyFor(row.id, false)
+    }
+  }
+
+  // Clear (mark paid) a partner's commission across EVERY currency at once.
+  const handleClearAll = async (row: SubAdminRow) => {
+    const currencies = Object.entries(row.commissionBalances ?? {})
+      .filter(([, amt]) => amt > 0)
+      .map(([cur]) => cur)
+    if (currencies.length === 0) return
+    const summary = currencies
+      .map((cur) => `${cur} ${formatMoney(row.commissionBalances[cur] ?? 0, cur)}`)
+      .join(' · ')
+    if (
+      !confirm(
+        `Clear all commission for "${row.name}" (${summary})? This zeroes every balance. Lifetime earnings stay on record.`,
+      )
+    ) {
+      return
+    }
+    setBusyFor(row.id, true)
+    try {
+      for (const currency of currencies) {
+        const res = await fetch(`/api/admin/sub-admins/${row.id}`, {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ clearCommissionBalance: true, currency }),
+        })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      }
+      setRows((prev) =>
+        prev.map((r) =>
+          r.id === row.id
+            ? { ...r, commissionBalances: {}, commissionBalance: 0 }
+            : r,
+        ),
       )
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -370,6 +411,19 @@ export default function AdminSubAdminsPage() {
                           <span className="hidden sm:inline">Paid {cur}</span>
                         </Button>
                       ))}
+                    {Object.values(r.commissionBalances ?? {}).some((amt) => amt > 0) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleClearAll(r)}
+                        disabled={busy.has(r.id)}
+                        className="h-7 px-2 text-xs gap-1 text-amber-500 border-amber-500/40 hover:bg-amber-500/10"
+                        title="Clear all commission balances"
+                      >
+                        <Eraser className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Clear</span>
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="outline"
