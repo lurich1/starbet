@@ -233,9 +233,10 @@ function DepositForm() {
     return 'timeout'
   }
 
-  // Mobile-money custom UI is GH-only (Paystack Charge API supports MoMo
-  // for GHS today). Card flow is the fallback / cross-country default.
-  const momoAvailable = gateway === 'paystack' && country === 'GH'
+  // In-app mobile-money checkout (network + phone + on-phone PIN) — GH only.
+  // Works with both Paystack and Flutterwave charge APIs; card/hosted is the
+  // fallback for other countries.
+  const momoAvailable = country === 'GH' && (gateway === 'paystack' || gateway === 'flutterwave')
   const showMoMoFlow = momoAvailable && payMode === 'momo' && Boolean(profile)
 
   const isReturning = Boolean(profile?.firstDepositAt) && !showSuccess && !manualSubmitted
@@ -696,6 +697,7 @@ function DepositForm() {
                         currency={currency}
                         defaultPhone={profile.phone ?? null}
                         purpose={purpose}
+                        gateway={gateway === 'flutterwave' ? 'flutterwave' : 'paystack'}
                         onSuccess={handleDepositSuccess}
                         onSwitchToCard={() => setPayMode('card')}
                       />

@@ -29,11 +29,26 @@ interface MobileMoneyFormProps {
   currency: string
   defaultPhone?: string | null
   purpose: 'deposit' | 'verification'
+  /** Which gateway processes the charge. Defaults to Paystack. */
+  gateway?: 'paystack' | 'flutterwave'
   /** Called when the charge resolves successfully (after server credit). */
   onSuccess: () => void
   /** Optional: surface a fallback to the card flow. */
   onSwitchToCard?: () => void
 }
+
+// Per-gateway charge + status endpoints. Both return { ok, status } shaped
+// responses the poller below understands.
+const ENDPOINTS = {
+  paystack: {
+    start: '/api/payments/paystack/momo/start',
+    status: (ref: string) => `/api/payments/paystack/momo/status?reference=${encodeURIComponent(ref)}`,
+  },
+  flutterwave: {
+    start: '/api/payments/flutterwave/momo/start',
+    status: (ref: string) => `/api/payments/flutterwave/status?reference=${encodeURIComponent(ref)}`,
+  },
+} as const
 
 type Phase =
   | { kind: 'form' }
@@ -46,9 +61,11 @@ export function MobileMoneyForm({
   currency,
   defaultPhone,
   purpose,
+  gateway = 'paystack',
   onSuccess,
   onSwitchToCard,
 }: MobileMoneyFormProps) {
+  const endpoints = ENDPOINTS[gateway]
   const [provider, setProvider] = useState<Provider>('mtn')
   const [phone, setPhone] = useState(defaultPhone ?? '')
   const [phase, setPhase] = useState<Phase>({ kind: 'form' })
@@ -77,10 +94,7 @@ export function MobileMoneyForm({
     const poll = async () => {
       if (cancelled) return
       try {
-        const res = await fetch(
-          `/api/payments/paystack/momo/status?reference=${encodeURIComponent(phase.reference)}`,
-          { cache: 'no-store' },
-        )
+        const res = await fetch(endpoints.status(phase.reference), { cache: 'no-store' })
         const data = await res.json().catch(() => ({}))
         const status: string | undefined = data?.status
         const ok: boolean = Boolean(data?.ok)
@@ -135,7 +149,7 @@ export function MobileMoneyForm({
         pollTimer.current = null
       }
     }
-  }, [phase, onSuccess])
+  }, [phase, onSuccess, endpoints])
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -146,7 +160,7 @@ export function MobileMoneyForm({
     }
     setSubmitting(true)
     try {
-      const res = await fetch('/api/payments/paystack/momo/start', {
+      const res = await fetch(endpoints.start, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
