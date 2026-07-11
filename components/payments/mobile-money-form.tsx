@@ -43,16 +43,18 @@ const ENDPOINTS = {
   paystack: {
     start: '/api/payments/paystack/momo/start',
     status: (ref: string) => `/api/payments/paystack/momo/status?reference=${encodeURIComponent(ref)}`,
+    validate: null as string | null,
   },
   flutterwave: {
     start: '/api/payments/flutterwave/momo/start',
     status: (ref: string) => `/api/payments/flutterwave/status?reference=${encodeURIComponent(ref)}`,
+    validate: '/api/payments/flutterwave/momo/validate' as string | null,
   },
 } as const
 
 type Phase =
   | { kind: 'form' }
-  | { kind: 'awaiting'; reference: string; displayText: string | null; startedAt: number }
+  | { kind: 'awaiting'; reference: string; displayText: string | null; startedAt: number; needsOtp: boolean }
   | { kind: 'failed'; reason: string }
 
 export function MobileMoneyForm({
@@ -71,6 +73,10 @@ export function MobileMoneyForm({
   const [phase, setPhase] = useState<Phase>({ kind: 'form' })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [otp, setOtp] = useState('')
+  const [otpSubmitting, setOtpSubmitting] = useState(false)
+  const [otpError, setOtpError] = useState<string | null>(null)
+  const [otpDone, setOtpDone] = useState(false)
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Clean up any pending polling timer when the component unmounts or the
@@ -189,6 +195,7 @@ export function MobileMoneyForm({
         reference: data.reference,
         displayText: data.displayText ?? null,
         startedAt: Date.now(),
+        needsOtp: data.authMode === 'otp' || data.authMode === 'otp-verify',
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -197,12 +204,45 @@ export function MobileMoneyForm({
     }
   }
 
+  // Submit the SMS code (Flutterwave OTP flow). Polling continues and flips to
+  // success once the validated charge clears.
+  const submitOtp = async () => {
+    if (phase.kind !== 'awaiting') return
+    const validateUrl = (endpoints as { validate?: string | null }).validate
+    if (!validateUrl) return
+    if (!otp.trim()) {
+      setOtpError('Enter the code you received by SMS.')
+      return
+    }
+    setOtpSubmitting(true)
+    setOtpError(null)
+    try {
+      const res = await fetch(validateUrl, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ reference: phase.reference, otp: otp.trim() }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error ?? 'That code was not accepted.')
+      setOtp('')
+      setOtpDone(true)
+    } catch (err) {
+      setOtpError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setOtpSubmitting(false)
+    }
+  }
+
   const restart = () => {
     setPhase({ kind: 'form' })
     setError(null)
+    setOtp('')
+    setOtpError(null)
+    setOtpDone(false)
   }
 
   if (phase.kind === 'awaiting') {
+    const canOtp = Boolean((endpoints as { validate?: string | null }).validate)
     return (
       <AwaitingPrompt
         provider={PROVIDERS.find((p) => p.key === provider)!}
@@ -211,6 +251,14 @@ export function MobileMoneyForm({
         currency={currency}
         displayText={phase.displayText}
         onCancel={restart}
+        canOtp={canOtp}
+        needsOtp={phase.needsOtp}
+        otp={otp}
+        onOtpChange={setOtp}
+        onSubmitOtp={submitOtp}
+        otpSubmitting={otpSubmitting}
+        otpError={otpError}
+        otpDone={otpDone}
       />
     )
   }
@@ -348,6 +396,14 @@ function AwaitingPrompt({
   currency,
   displayText,
   onCancel,
+  canOtp,
+  needsOtp,
+  otp,
+  onOtpChange,
+  onSubmitOtp,
+  otpSubmitting,
+  otpError,
+  otpDone,
 }: {
   provider: ProviderOption
   phone: string
@@ -355,6 +411,14 @@ function AwaitingPrompt({
   currency: string
   displayText: string | null
   onCancel: () => void
+  canOtp: boolean
+  needsOtp: boolean
+  otp: string
+  onOtpChange: (v: string) => void
+  onSubmitOtp: () => void
+  otpSubmitting: boolean
+  otpError: string | null
+  otpDone: boolean
 }) {
   const fallback =
     provider.key === 'vod'
@@ -373,12 +437,61 @@ function AwaitingPrompt({
       </div>
       <div>
         <p className="text-sm font-bold text-foreground">
-          Check your phone
+          {needsOtp ? 'Enter the code' : 'Check your phone'}
         </p>
         <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
-          {displayText ?? fallback}
+          {needsOtp
+            ? `Enter the code sent by SMS to ${phone} to approve ${currency} ${amount.toFixed(2)}.`
+            : displayText ?? fallback}
         </p>
       </div>
+
+      {/* OTP code entry — for the Flutterwave SMS-code flow. Always available so
+          a customer who receives a code always has somewhere to type it. */}
+      {canOtp && (
+        <div className="rounded-xl border border-primary/25 bg-primary/5 p-3 space-y-2 text-left">
+          <label className="text-eyebrow text-muted-foreground block">
+            Payment code (from SMS)
+          </label>
+          {otpDone ? (
+            <div className="flex items-center gap-2 text-success text-sm font-semibold">
+              <CheckCircle2 className="w-4 h-4" />
+              Code submitted — confirming your payment…
+            </div>
+          ) : (
+            <>
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="Enter code"
+                  value={otp}
+                  onChange={(e) => onOtpChange(e.target.value)}
+                  className="h-11 bg-background border-border font-mono tabular-nums tracking-widest text-center"
+                />
+                <Button
+                  type="button"
+                  onClick={onSubmitOtp}
+                  disabled={otpSubmitting || !otp.trim()}
+                  className="h-11 px-4 bg-primary text-primary-foreground font-bold shrink-0"
+                >
+                  {otpSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Submit'}
+                </Button>
+              </div>
+              {otpError && (
+                <p className="text-[11px] text-destructive flex items-start gap-1">
+                  <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" />
+                  {otpError}
+                </p>
+              )}
+              <p className="text-[11px] text-muted-foreground">
+                No code? Just approve the prompt on your phone — this page updates automatically.
+              </p>
+            </>
+          )}
+        </div>
+      )}
       <div className="rounded-xl bg-secondary/60 border border-border p-3 text-left space-y-1.5">
         <div className="flex justify-between text-xs">
           <span className="text-muted-foreground">Network</span>

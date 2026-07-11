@@ -92,6 +92,10 @@ export interface MobileMoneyChargeResult {
   reference: string
   /** Flutterwave transaction id (if returned). */
   flwId: string | null
+  /** Flutterwave charge ref (flw_ref) — needed to validate an OTP. */
+  flwRef: string | null
+  /** Authorization mode, e.g. 'otp' when the customer must enter an SMS code. */
+  authMode: string | null
   /** Charge status from the create response (usually 'pending'). */
   status: string
   /** Some networks (e.g. Vodafone voucher) need a redirect to finish. */
@@ -140,7 +144,7 @@ export async function chargeMobileMoney(input: ChargeInput): Promise<MobileMoney
     status?: string
     message?: string
     meta?: { authorization?: { redirect?: string; mode?: string } }
-    data?: { id?: number | string; status?: string; tx_ref?: string }
+    data?: { id?: number | string; status?: string; tx_ref?: string; flw_ref?: string; auth_model?: string }
   } = {}
   try {
     body = raw ? JSON.parse(raw) : {}
@@ -162,8 +166,47 @@ export async function chargeMobileMoney(input: ChargeInput): Promise<MobileMoney
   return {
     reference: input.reference,
     flwId: body.data?.id != null ? String(body.data.id) : null,
+    flwRef: body.data?.flw_ref ?? null,
+    authMode: body.meta?.authorization?.mode ?? body.data?.auth_model ?? null,
     status: body.data?.status ?? 'pending',
     redirect: body.meta?.authorization?.redirect ?? null,
+    message: body.message ?? null,
+  }
+}
+
+// ---- Validate (submit OTP) ----------------------------------------------
+
+/**
+ * Submit the OTP the customer received by SMS to finish a mobile-money charge.
+ * Flutterwave: POST /v3/validate-charge with the charge's flw_ref + the code.
+ */
+export async function validateCharge(
+  flwRef: string,
+  otp: string,
+): Promise<{ ok: boolean; status: string; message: string | null }> {
+  const res = await flwFetch(`${BASE}/validate-charge`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ type: 'mobile_money_ghana', flw_ref: flwRef, otp }),
+    cache: 'no-store',
+  })
+  const raw = await res.text()
+  let body: { status?: string; message?: string; data?: { status?: string } } = {}
+  try {
+    body = raw ? JSON.parse(raw) : {}
+  } catch {
+    /* non-JSON */
+  }
+  const ok = res.ok && body.status === 'success'
+  if (!ok) {
+    console.error('[flutterwave] validate-charge error', {
+      status: res.status,
+      response: raw.slice(0, 500),
+    })
+  }
+  return {
+    ok,
+    status: body.data?.status ?? (ok ? 'pending' : 'failed'),
     message: body.message ?? null,
   }
 }

@@ -78,6 +78,7 @@ export async function POST(request: Request) {
     })
 
     // Record the pending row so the status poller can verify + credit it.
+    // Stash flw_ref so the OTP-validate step can reference this charge.
     await recordPayment({
       userId,
       reference,
@@ -86,7 +87,13 @@ export async function POST(request: Request) {
       status: 'pending',
       provider: 'flutterwave',
       currency: user.currency,
-      metadata: { purpose, country: user.country, userName: user.name, network },
+      metadata: {
+        purpose,
+        country: user.country,
+        userName: user.name,
+        network,
+        flwRef: charge.flwRef,
+      },
     }).catch((e) => console.error('[flutterwave/momo/start] ledger write failed:', e))
 
     return NextResponse.json(
@@ -94,6 +101,8 @@ export async function POST(request: Request) {
         reference,
         status: charge.status,
         displayText: charge.message,
+        // 'otp' when the customer must type an SMS code to finish.
+        authMode: charge.authMode ?? undefined,
         // Some networks (e.g. Telecel voucher) hand back a redirect to finish.
         redirect: charge.redirect ?? undefined,
       },
