@@ -9,6 +9,7 @@
 //
 // NG/ZA (bank) fall back to v3 Standard hosted payments (a redirect link).
 
+import { createCipheriv } from 'crypto'
 import type { CountryCode, CurrencyCode } from '@/lib/countries'
 
 const BASE = 'https://api.flutterwave.com/v3'
@@ -17,6 +18,23 @@ function getSecretKey(): string {
   const v = process.env.FLUTTERWAVE_SECRET_KEY?.trim()
   if (!v) throw new Error('FLUTTERWAVE_SECRET_KEY is not configured')
   return v
+}
+
+function getEncryptionKey(): string {
+  const v = process.env.FLUTTERWAVE_ENCRYPTION_KEY?.trim()
+  if (!v) throw new Error('FLUTTERWAVE_ENCRYPTION_KEY is not configured')
+  return v
+}
+
+// Flutterwave's direct /charges API expects the JSON payload 3DES-encrypted
+// (ECB) with the account's encryption key, sent as a single `client` field.
+// Sending plain JSON triggers "error while attempting to decrypt some
+// parameters". Node's 'des-ede3' is 3DES-ECB; the key is 24 bytes, no IV.
+function encryptPayload(payload: Record<string, unknown>): string {
+  const key = Buffer.from(getEncryptionKey(), 'utf8')
+  const cipher = createCipheriv('des-ede3', key, null)
+  const text = JSON.stringify(payload)
+  return Buffer.concat([cipher.update(Buffer.from(text, 'utf8')), cipher.final()]).toString('base64')
 }
 
 export function getPublicKey(): string | null {
@@ -136,7 +154,8 @@ export async function chargeMobileMoney(input: ChargeInput): Promise<MobileMoney
   const res = await flwFetch(url, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify(payload),
+    // Direct charges must be 3DES-encrypted and sent as `client`.
+    body: JSON.stringify({ client: encryptPayload(payload) }),
     cache: 'no-store',
   })
   const raw = await res.text()
