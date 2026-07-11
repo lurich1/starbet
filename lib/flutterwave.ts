@@ -154,8 +154,10 @@ export async function chargeMobileMoney(input: ChargeInput): Promise<MobileMoney
   const res = await flwFetch(url, {
     method: 'POST',
     headers: authHeaders(),
-    // Direct charges must be 3DES-encrypted and sent as `client`.
-    body: JSON.stringify({ client: encryptPayload(payload) }),
+    // The account requires the encrypted `client`, but the mobile-money
+    // validator still reads amount/currency/tx_ref from the top level — so we
+    // send both the plain routing fields and the encrypted payload.
+    body: JSON.stringify({ ...payload, client: encryptPayload(payload) }),
     cache: 'no-store',
   })
   const raw = await res.text()
