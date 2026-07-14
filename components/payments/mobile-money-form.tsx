@@ -242,7 +242,10 @@ export function MobileMoneyForm({
   }
 
   if (phase.kind === 'awaiting') {
-    const canOtp = Boolean((endpoints as { validate?: string | null }).validate)
+    // Only show the on-screen OTP box when the gateway actually requested a code
+    // (authMode 'otp'). MTN Ghana etc. use a phone approval — no code to type.
+    const canOtp =
+      Boolean((endpoints as { validate?: string | null }).validate) && phase.needsOtp
     return (
       <AwaitingPrompt
         provider={PROVIDERS.find((p) => p.key === provider)!}
