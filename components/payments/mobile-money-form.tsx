@@ -190,6 +190,12 @@ export function MobileMoneyForm({
       if (status === 'failed') {
         throw new Error(data.displayText ?? 'Charge failed.')
       }
+      // Flutterwave Ghana mobile money authorizes on a hosted page (OTP / PIN):
+      // send the customer there. They come back and the webhook/poll credits.
+      if (data.redirect) {
+        window.location.href = data.redirect as string
+        return
+      }
       setPhase({
         kind: 'awaiting',
         reference: data.reference,

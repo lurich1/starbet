@@ -130,11 +130,14 @@ interface ChargeInput {
   phone: string
   fullname: string
   network?: string
+  /** Where Flutterwave returns the customer after the authorization page. */
+  redirectUrl?: string
 }
 
 /**
- * Trigger a mobile-money charge. The customer gets a PIN/approval prompt on
- * their phone. Only GH and KE are mobile-money countries here.
+ * Trigger a mobile-money charge. Ghana authorizes on a hosted page returned as
+ * `meta.authorization.redirect`; after the customer completes it, Flutterwave
+ * sends them to `redirect_url`. Only GH and KE are mobile-money countries here.
  */
 export async function chargeMobileMoney(input: ChargeInput): Promise<MobileMoneyChargeResult> {
   const type = input.country === 'KE' ? 'mpesa' : 'mobile_money_ghana'
@@ -146,6 +149,7 @@ export async function chargeMobileMoney(input: ChargeInput): Promise<MobileMoney
     phone_number: input.phone,
     fullname: input.fullname || 'Customer',
   }
+  if (input.redirectUrl) payload.redirect_url = input.redirectUrl
   if (input.country === 'GH') {
     payload.network = GH_NETWORK[(input.network ?? '').toLowerCase()] ?? 'MTN'
   }

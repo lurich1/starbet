@@ -65,6 +65,15 @@ export async function POST(request: Request) {
   const refPrefix = purpose === 'verification' ? 'PB-VRF' : 'PB-DEP'
   const reference = `${refPrefix}-${userId.slice(0, 8)}-${Date.now()}`
 
+  // Where Flutterwave sends the customer after the hosted authorization page:
+  // our callback verifies + credits, then redirects to /me.
+  const explicit = process.env.NEXT_PUBLIC_APP_URL?.trim()
+  const reqUrl = new URL(request.url)
+  const originBase = explicit
+    ? (/^https?:\/\//i.test(explicit) ? explicit : `https://${explicit}`).replace(/\/$/, '')
+    : `${reqUrl.protocol}//${reqUrl.host}`
+  const redirectUrl = `${originBase}/api/payments/flutterwave/callback?ref=${encodeURIComponent(reference)}&returnPath=%2Fme`
+
   try {
     const charge = await chargeMobileMoney({
       reference,
@@ -75,6 +84,7 @@ export async function POST(request: Request) {
       phone,
       fullname: user.name,
       network,
+      redirectUrl,
     })
 
     // Record the pending row so the status poller can verify + credit it.
