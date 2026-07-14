@@ -24,7 +24,6 @@ import {
   LogOut,
   Copy,
   Check,
-  AlertCircle,
 } from 'lucide-react'
 import { MobileNav } from '@/components/mobile-nav'
 import { Button } from '@/components/ui/button'
@@ -45,7 +44,6 @@ import {
   getWithdrawalMin,
   getWithdrawalMax,
   getWithdrawalMaxUnverified,
-  getWithdrawalMaxVerified,
   isCountryCode,
   isCurrencyCode,
   normalizePhone,
@@ -212,7 +210,6 @@ function MePageInner() {
   const withdrawalMin = getWithdrawalMin(country)
   const withdrawalMax = getWithdrawalMax(country, isVerified)
   const withdrawalMaxUnverified = getWithdrawalMaxUnverified(country)
-  const withdrawalMaxVerified = getWithdrawalMaxVerified(country)
   // A country with an unverified band (GH) lets unverified users withdraw the
   // small amount; otherwise unverified users must verify first (NG/KE/ZA).
   const allowsUnverifiedWithdrawal = withdrawalMaxUnverified > 0
@@ -745,71 +742,63 @@ function MePageInner() {
             aria-modal="true"
             className="relative w-full max-w-md bg-card border border-border rounded-2xl p-6 shadow-popover animate-in fade-in zoom-in-95 duration-200"
           >
-            <div className="flex items-start gap-3 mb-3">
-              <AlertCircle className="w-6 h-6 text-amber-500 shrink-0 mt-0.5" />
-              <h2 className="text-lg font-bold text-foreground">Account Not Verified</h2>
-            </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Your account is not yet verified. You can make{' '}
-              <span className="font-semibold text-foreground">one withdrawal</span> of{' '}
-              <span className="font-semibold text-foreground">
-                {currency} {withdrawalMin}
+            <button
+              type="button"
+              onClick={() => setVerifyNoticeOpen(false)}
+              aria-label="Close"
+              className="absolute top-4 right-4 p-1 rounded-md text-muted-foreground hover:bg-secondary"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <p className="text-[15px] text-muted-foreground leading-relaxed pr-6">
+              Your account requires verification before withdrawals can be processed.
+              Complete your verification with a deposit of{' '}
+              <span className="font-bold text-foreground">
+                {currency} {verificationAmount.toFixed(2)}
               </span>{' '}
-              to{' '}
-              <span className="font-semibold text-foreground">
-                {currency} {withdrawalMaxUnverified}
-              </span>
-              .
+              to unlock withdrawal access.
             </p>
-            <p className="text-sm text-muted-foreground leading-relaxed mt-2">
-              Complete your verification with a{' '}
-              <span className="font-semibold text-foreground">
-                {currency} {verificationAmount}
-              </span>{' '}
-              deposit to increase your withdrawal limit to up to{' '}
-              <span className="font-semibold text-foreground">
-                {currency} {withdrawalMaxVerified.toLocaleString()}
-              </span>{' '}
-              per transaction.
-            </p>
-            {/* Only surface progress once they've paid the first one — showing
-                0/4 up front just discourages people from starting. */}
+
+            {/* Progress — only once they've paid the first one (no 0/4). */}
             {currentVerificationStep >= 1 && (
-              <div className="mt-4">
-                <div className="flex items-center justify-between text-xs mb-1.5">
-                  <span className="text-muted-foreground">Verification progress</span>
-                  <span className="tabular-nums font-semibold text-foreground">
+              <div className="mt-5">
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span className="font-semibold text-foreground">Verification progress</span>
+                  <span className="tabular-nums font-bold text-foreground">
                     {currentVerificationStep} / {VERIFICATION_TOTAL}
                   </span>
                 </div>
-                <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                <div className="h-2.5 bg-secondary rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-primary transition-all"
+                    className="h-full rounded-full bg-gradient-to-r from-rose-500 via-orange-500 to-amber-400 transition-all"
                     style={{ width: `${(currentVerificationStep / VERIFICATION_TOTAL) * 100}%` }}
                   />
                 </div>
               </div>
             )}
-            <div className="mt-5 flex flex-col gap-2">
-              <Button
-                type="button"
-                onClick={() => {
-                  setVerifyNoticeOpen(false)
-                  void startVerificationDeposit()
-                }}
-                className="w-full h-11 bg-primary text-primary-foreground hover:bg-primary/90 font-bold"
-              >
-                Deposit {currency} {verificationAmount} to verify
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setVerifyNoticeOpen(false)}
-                className="w-full h-11 font-semibold"
-              >
-                Continue with one {currency} {withdrawalMin}–{withdrawalMaxUnverified} withdrawal
-              </Button>
-            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setVerifyNoticeOpen(false)
+                void startVerificationDeposit()
+              }}
+              className="mt-6 w-full h-14 rounded-2xl bg-gradient-to-r from-rose-500 via-orange-500 to-amber-400 text-white font-extrabold text-base shadow-lg shadow-orange-500/25 active:scale-[0.99] transition-transform"
+            >
+              Deposit {currency} {verificationAmount.toFixed(2)} to verify
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setVerifyNoticeOpen(false)
+                void loadProfile()
+              }}
+              className="mt-4 w-full text-center text-sm font-bold text-primary hover:underline"
+            >
+              I&apos;ve completed a deposit
+            </button>
           </div>
         </div>
       )}
