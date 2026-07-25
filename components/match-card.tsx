@@ -214,14 +214,14 @@ function OddsButton({
         disabled
           ? 'bg-secondary/40 text-muted-foreground opacity-60'
           : selected
-            ? 'bg-gradient-to-b from-primary to-primary/85 text-primary-foreground ring-1 ring-primary/60 shadow-[0_6px_18px_-4px] shadow-primary/50 scale-[0.98]'
-            : 'bg-secondary/70 text-foreground ring-1 ring-border/60 hover:ring-primary/50 hover:bg-secondary hover:-translate-y-0.5 active:scale-95'
+            ? 'bg-success text-success-foreground ring-1 ring-success/60 shadow-[0_6px_18px_-4px] shadow-success/50 scale-[0.98]'
+            : 'bg-success/10 text-success ring-1 ring-success/20 hover:bg-success/20 hover:-translate-y-0.5 active:scale-95'
       }`}
     >
-      <span className={`text-[10px] font-bold uppercase tracking-wider mb-0.5 ${selected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+      <span className={`text-[10px] font-bold uppercase tracking-wider mb-0.5 ${selected ? 'text-success-foreground/80' : 'text-success/70'}`}>
         {label}
       </span>
-      <span className={`text-lg sm:text-xl font-extrabold tabular-nums leading-none ${selected ? '' : 'text-foreground'}`}>
+      <span className="text-lg sm:text-xl font-extrabold tabular-nums leading-none">
         {value.toFixed(2)}
       </span>
     </button>

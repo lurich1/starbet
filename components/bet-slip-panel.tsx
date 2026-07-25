@@ -15,6 +15,8 @@ import {
   Check,
   Lock,
   Zap,
+  Share2,
+  ArrowRight,
 } from 'lucide-react'
 import type { BetSelection, PlacedBet } from '@/lib/types'
 import { Button } from '@/components/ui/button'
@@ -314,6 +316,52 @@ export function BetSlipPanel({
       </div>
       {tab === 'slip' && (
         <div className="mt-4">
+          {/* Share / Clear actions (screenshot header) */}
+          {selections.length > 0 && (
+            <div className="flex items-center justify-end gap-5 mb-3">
+              <button
+                onClick={handleBookBet}
+                disabled={booking}
+                className="text-sm font-bold text-primary hover:text-primary/80 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                {booking ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Share2 className="w-3.5 h-3.5" />
+                )}
+                Share
+              </button>
+              <button
+                onClick={onClearAll}
+                className="text-sm font-semibold text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                Clear
+              </button>
+            </div>
+          )}
+
+          {/* Load booking code */}
+          <div className="flex items-stretch gap-2 mb-4">
+            <Input
+              placeholder="LOAD CODE (e.g. BG-XYZ7)"
+              value={bookingCode}
+              onChange={(e) => setBookingCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ''))}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void handleLoadCode()
+              }}
+              maxLength={12}
+              className="flex-1 h-11 bg-secondary border-border uppercase tracking-wider placeholder:text-muted-foreground/60 placeholder:tracking-wider"
+            />
+            <Button
+              variant="secondary"
+              onClick={() => void handleLoadCode()}
+              disabled={loadingCode || !bookingCode}
+              className="h-11 px-5 font-semibold"
+            >
+              {loadingCode ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Load'}
+            </Button>
+          </div>
+
           {selections.length === 0 ? (
             <div className="text-center py-12">
               <div className="w-16 h-16 mx-auto mb-4 bg-secondary rounded-full flex items-center justify-center">
@@ -336,99 +384,115 @@ export function BetSlipPanel({
             </div>
           ) : (
             <>
-              {/* Header: count badge + remove all + balance */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                  <span className="w-6 h-6 rounded-full bg-success text-white text-xs font-extrabold flex items-center justify-center tabular-nums">
-                    {selections.length}
-                  </span>
-                  <button
-                    onClick={onClearAll}
-                    className="text-xs text-destructive hover:text-destructive/80 flex items-center gap-1 cursor-pointer"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    Remove All
-                  </button>
-                </div>
-                <span className="text-sm font-extrabold text-amber-400 tabular-nums">
-                  {currency} {balance !== null ? balance.toFixed(2) : '—'}
-                </span>
-              </div>
-
-              {/* Bet-type segmented control */}
-              <div className="grid grid-cols-3 gap-1 p-1 bg-secondary rounded-xl mb-3">
-                {(['single', 'multiple', 'system'] as const).map((t) => {
-                  const disabled = t === 'system' || (t === 'multiple' && selections.length < 2)
-                  const activeT = (isSingle ? 'single' : betType) === t
+              {/* Parlay / Singles toggle */}
+              <div className="grid grid-cols-2 gap-1 p-1 bg-secondary rounded-xl mb-4">
+                {([
+                  { key: 'multiple' as const, label: `Parlay (${selections.length})`, disabled: selections.length < 2 },
+                  { key: 'single' as const, label: 'Singles', disabled: false },
+                ]).map((t) => {
+                  const activeT = (isSingle ? 'single' : betType) === t.key
                   return (
                     <button
-                      key={t}
+                      key={t.key}
                       type="button"
-                      disabled={disabled}
-                      onClick={() => setBetType(t)}
-                      className={`py-2 rounded-lg text-sm font-bold capitalize transition-colors ${
+                      disabled={t.disabled}
+                      onClick={() => setBetType(t.key)}
+                      className={`py-2.5 rounded-lg text-sm font-bold transition-colors ${
                         activeT
-                          ? 'bg-primary text-primary-foreground shadow'
-                          : disabled
+                          ? 'bg-card text-foreground shadow-sm'
+                          : t.disabled
                             ? 'text-muted-foreground/40 cursor-not-allowed'
                             : 'text-muted-foreground hover:text-foreground cursor-pointer'
                       }`}
                     >
-                      {t}
+                      {t.label}
                     </button>
                   )
                 })}
               </div>
 
-              {/* Selection rows */}
-              <div className="rounded-xl border border-border overflow-hidden divide-y divide-border">
+              {/* Selection cards */}
+              <div className="space-y-3">
                 {selections.map((raw) => {
                   const selection = hydrateLegacySelection(raw)
                   const sClosed = getBettingState(selection.match).closed
                   const live = selection.match.isLive
                   return (
-                    <div key={selection.id} className={`flex items-start gap-2.5 p-3 bg-card ${sClosed ? 'bg-destructive/5' : ''}`}>
-                      <button
-                        onClick={() => onRemoveSelection(selection.id)}
-                        className="mt-0.5 text-muted-foreground hover:text-destructive transition-colors cursor-pointer shrink-0"
-                        aria-label="Remove selection"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
+                    <div
+                      key={selection.id}
+                      className={`flex items-start justify-between gap-3 rounded-xl p-3.5 ${sClosed ? 'bg-destructive/5' : 'bg-secondary'}`}
+                    >
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="font-bold text-sm truncate">{selection.outcomeLabel}</p>
-                          <span className={`font-extrabold tabular-nums shrink-0 ${sClosed ? 'text-muted-foreground line-through' : 'text-primary'}`}>
-                            {selection.odds.toFixed(2)}
-                          </span>
-                        </div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                          {selection.marketLabel}
+                        </p>
+                        <p className="font-bold text-sm mt-1 truncate">{selection.outcomeLabel}</p>
                         <p className="text-xs text-muted-foreground truncate mt-0.5 flex items-center gap-1.5">
                           {live && <span className="text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-live/15 text-live shrink-0">Live</span>}
                           {sClosed && <Lock className="w-3 h-3 text-destructive shrink-0" />}
-                          <span className="truncate">{selection.match.homeTeam} v {selection.match.awayTeam}</span>
+                          <span className="truncate">{selection.match.homeTeam} vs {selection.match.awayTeam}</span>
                         </p>
-                        <p className="text-[11px] text-muted-foreground/80 mt-0.5">{selection.marketLabel}</p>
                         {sClosed && <p className="text-[10px] text-destructive mt-1">Closed — remove this leg.</p>}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`px-2.5 py-1 rounded-md font-extrabold text-sm tabular-nums ${sClosed ? 'text-muted-foreground line-through' : 'bg-primary/10 text-primary'}`}>
+                          {selection.odds.toFixed(2)}
+                        </span>
+                        <button
+                          onClick={() => onRemoveSelection(selection.id)}
+                          className="text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+                          aria-label="Remove selection"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
                   )
                 })}
               </div>
 
+              {/* Quick-stake buttons */}
+              <div className="grid grid-cols-4 gap-2 mt-5">
+                {[10, 50, 100].map((amt) => (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => setStake(String((parseFloat(stake) || 0) + amt))}
+                    className="h-11 rounded-xl border border-border text-sm font-bold text-foreground hover:border-primary hover:text-primary transition-colors cursor-pointer"
+                  >
+                    +{amt}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => balance !== null && setStake(String(balance))}
+                  className="h-11 rounded-xl border border-border text-sm font-bold text-foreground hover:border-primary hover:text-primary transition-colors cursor-pointer"
+                >
+                  MAX
+                </button>
+              </div>
+
               {/* Total stake */}
               <div className="mt-4 flex items-center justify-between gap-3">
-                <span className="text-sm font-bold">Total Stake</span>
-                <div className="flex items-center gap-2">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Total Stake</p>
+                  <p className="text-xs text-muted-foreground">
+                    Available: {currency} {balance !== null ? balance.toLocaleString(undefined, { minimumFractionDigits: 0 }) : '—'}
+                  </p>
+                </div>
+                <div
+                  className={`flex items-center gap-2 h-12 rounded-xl bg-secondary px-3 ${
+                    insufficient ? 'ring-1 ring-destructive/60' : ''
+                  }`}
+                >
                   <span className="text-xs font-bold text-muted-foreground">{currency}</span>
-                  <Input
+                  <input
                     type="number"
                     inputMode="decimal"
                     placeholder="0.00"
                     value={stake}
                     onChange={(e) => setStake(e.target.value)}
-                    className={`w-28 text-right bg-secondary font-bold tabular-nums ${
-                      insufficient ? 'border-destructive ring-1 ring-destructive/60' : 'border-border'
-                    }`}
+                    className="w-24 bg-transparent text-right font-bold tabular-nums outline-none text-base"
                   />
                 </div>
               </div>
@@ -441,28 +505,35 @@ export function BetSlipPanel({
                   </p>
                   <Link
                     href={userId ? `/users/first-deposit?userId=${userId}` : '/register'}
-                    className="mt-1 inline-flex items-center gap-0.5 text-xs font-bold text-success hover:underline"
+                    className="mt-1 inline-flex items-center gap-0.5 text-xs font-bold text-primary hover:underline"
                   >
                     Go to Deposit <ChevronRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
               )}
 
-              {/* Totals */}
-              <div className="mt-3 rounded-xl bg-secondary p-3 space-y-1.5">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Total Odds</span>
-                  <span className="font-bold tabular-nums">{isSingle ? '—' : totalOdds.toFixed(2)}</span>
-                </div>
-                {isSingle && selections.length > 1 && (
+              {/* Combined odds + estimated returns */}
+              <div className="mt-4 space-y-2">
+                {!isSingle ? (
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Total Stake</span>
-                    <span className="font-bold tabular-nums">{validStake ? totalStakeAmount.toFixed(2) : '0.00'}</span>
+                    <span className="font-semibold text-muted-foreground">Combined Odds:</span>
+                    <span className="font-extrabold tabular-nums">x{totalOdds.toFixed(2)}</span>
                   </div>
+                ) : (
+                  selections.length > 1 && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-semibold text-muted-foreground">Total Stake:</span>
+                      <span className="font-extrabold tabular-nums">
+                        {currency} {validStake ? totalStakeAmount.toFixed(2) : '0.00'}
+                      </span>
+                    </div>
+                  )
                 )}
-                <div className="flex items-center justify-between pt-1.5 border-t border-border/60">
-                  <span className="text-sm font-bold">Potential Win</span>
-                  <span className="text-lg font-extrabold text-success tabular-nums">{potentialWin}</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-base font-bold">Est. Returns:</span>
+                  <span className="text-xl font-extrabold text-primary tabular-nums">
+                    {currency} {potentialWinNum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
                 </div>
               </div>
 
@@ -483,68 +554,25 @@ export function BetSlipPanel({
                 </div>
               )}
 
-              {/* Action bar: Book Bet | Place Bet */}
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                <Button
-                  variant="outline"
-                  onClick={handleBookBet}
-                  disabled={loading || booking}
-                  className="h-12 border-primary/40 text-primary hover:bg-primary/10 font-bold"
-                >
-                  {booking ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Booking…
-                    </>
-                  ) : (
-                    'Book Bet'
-                  )}
-                </Button>
-                <Button
-                  onClick={handlePlaceBet}
-                  disabled={loading || hasClosed || insufficient}
-                  className="h-12 bg-success text-white hover:bg-success/90 font-bold shadow-lg shadow-success/20 disabled:opacity-60"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Placing…
-                    </>
-                  ) : (
-                    'Place Bet'
-                  )}
-                </Button>
-              </div>
+              {/* Place Bet */}
+              <Button
+                onClick={handlePlaceBet}
+                disabled={loading || hasClosed || insufficient}
+                className="mt-4 w-full h-14 bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-base rounded-xl shadow-lg shadow-primary/25 disabled:opacity-60"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Placing…
+                  </>
+                ) : (
+                  <>
+                    Place Bet <ArrowRight className="w-5 h-5 ml-1" />
+                  </>
+                )}
+              </Button>
             </>
           )}
 
-          <div className="mt-6 pt-4 border-t border-border">
-            <p className="text-xs text-muted-foreground font-semibold uppercase mb-3">
-              Have a booking code?
-            </p>
-            <Input
-              placeholder="E.G. AKD7M9"
-              value={bookingCode}
-              onChange={(e) => setBookingCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') void handleLoadCode()
-              }}
-              maxLength={8}
-              className="bg-secondary border-border uppercase tracking-widest"
-            />
-            <Button
-              variant="outline"
-              onClick={() => void handleLoadCode()}
-              disabled={loadingCode || !bookingCode}
-              className="w-full mt-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground"
-            >
-              {loadingCode ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Loading…
-                </>
-              ) : (
-                'LOAD'
-              )}
-            </Button>
-          </div>
         </div>
       )}
 
