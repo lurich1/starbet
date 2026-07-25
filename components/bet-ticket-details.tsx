@@ -65,8 +65,8 @@ export function BetTicketDetails({ bet, open, onClose, userName }: BetTicketDeta
 
   const shareWin = () => {
     void navigator.share?.({
-      title: 'Prime Bet — Won!',
-      text: `Just won ${cur} ${formatMoney(totalReturn, cur)} on Prime Bet (ticket ${ticketId})`,
+      title: 'Betfus — Won!',
+      text: `Just won ${cur} ${formatMoney(totalReturn, cur)} on Betfus (ticket ${ticketId})`,
     })
   }
 

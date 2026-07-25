@@ -106,10 +106,10 @@ function RegisterForm() {
             <ArrowLeft className="w-5 h-5" />
             <span>Back</span>
           </Link>
-          <Link href="/" className="flex items-center" aria-label="Bettivo home">
+          <Link href="/" className="flex items-center" aria-label="Betfus home">
             <Image
-              src="/bettivo-logo.svg"
-              alt="Bettivo"
+              src="/betfus-logo.svg"
+              alt="Betfus"
               width={360}
               height={104}
               className="logo-img h-7 w-auto"
@@ -129,7 +129,7 @@ function RegisterForm() {
             <div className="text-center mb-6">
               <h1 className="text-title font-bold text-foreground mb-1.5 tracking-tight">Create account</h1>
               <p className="text-muted-foreground text-sm">
-                Join Prime Bet and start winning today
+                Join Betfus and start winning today
               </p>
             </div>
 

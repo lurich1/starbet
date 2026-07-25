@@ -1,0 +1,10 @@
+<svg width="360" height="104" viewBox="0 0 360 104" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Betfus">
+  <!-- Lightning-bolt mark in a red badge (fast payouts / energy) -->
+  <rect x="10" y="16" width="72" height="72" rx="18" fill="#E8112D"/>
+  <path d="M50 30 L35 55 L45 55 L42 74 L59 47 L48 47 L52 30 Z" fill="#ffffff"/>
+  <!-- Wordmark -->
+  <text x="98" y="72"
+    font-family="Arial, Helvetica, system-ui, sans-serif"
+    font-size="54" font-weight="800" font-style="italic"
+    letter-spacing="-1.5" fill="#E8112D">BETFUS</text>
+</svg>

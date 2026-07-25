@@ -212,7 +212,7 @@ export function BetSlipPanel({
         throw new Error(data.error ?? 'Could not create a booking code.')
       }
       const code = data.code as string
-      const shareText = `Load my Star Bet slip with booking code ${code}.`
+      const shareText = `Load my Betfus slip with booking code ${code}.`
       // Best-effort copy so the code is on the clipboard even if share is cancelled.
       try {
         await navigator.clipboard?.writeText(code)
@@ -221,7 +221,7 @@ export function BetSlipPanel({
       }
       if (typeof navigator !== 'undefined' && navigator.share) {
         try {
-          await navigator.share({ title: 'Star Bet booking code', text: shareText })
+          await navigator.share({ title: 'Betfus booking code', text: shareText })
         } catch {
           /* share cancelled — code already copied */
         }

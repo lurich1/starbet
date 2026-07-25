@@ -271,7 +271,7 @@ export async function createStandardPayment(input: {
   // Flutterwave rejects the request ("required parameters missing") if any of
   // tx_ref / amount / currency / redirect_url / customer.email is empty. Guard
   // each so a user with a blank email/name can still check out.
-  const email = input.email?.trim() || `user-${input.reference}@starbet.app`
+  const email = input.email?.trim() || `user-${input.reference}@betfus.com`
   const amount = Number(input.amount)
   const payload = {
     tx_ref: input.reference,
@@ -284,7 +284,7 @@ export async function createStandardPayment(input: {
       ...(input.phone ? { phonenumber: input.phone } : {}),
     },
     customizations: {
-      title: 'Star Bet',
+      title: 'Betfus',
       description: 'Wallet deposit',
     },
     payment_options: PAYMENT_OPTIONS[input.country] ?? 'card',

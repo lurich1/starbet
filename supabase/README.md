@@ -1,4 +1,4 @@
-# Supabase setup for PrimeBet
+# Supabase setup for Betfus
 
 Your project URL: <https://doqlicdyzblveoryqhel.supabase.co>
 

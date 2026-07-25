@@ -169,10 +169,10 @@ export default function SubAdminDashboardPage() {
       <header className="bg-card border-b border-border sticky top-0 z-30">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <Link href="/" className="flex items-center" aria-label="Bettivo home">
+            <Link href="/" className="flex items-center" aria-label="Betfus home">
               <Image
-                src="/bettivo-logo.svg"
-                alt="Bettivo"
+                src="/betfus-logo.svg"
+                alt="Betfus"
                 width={360}
                 height={104}
                 className="logo-img h-7 w-auto"

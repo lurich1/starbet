@@ -480,7 +480,7 @@ function MePageInner() {
               <Wallet className="w-9 h-9 text-primary" />
             </div>
           </div>
-          <h1 className="text-title font-bold text-foreground mb-1.5">Welcome to Prime Bet</h1>
+          <h1 className="text-title font-bold text-foreground mb-1.5">Welcome to Betfus</h1>
           <p className="text-muted-foreground text-sm mb-6">
             Sign in to view your balance and wallet.
           </p>

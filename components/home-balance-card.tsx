@@ -81,7 +81,7 @@ export function HomeBalanceCard() {
               <Wallet className="w-5 h-5 text-primary" />
             </div>
             <div className="min-w-0">
-              <p className="text-eyebrow text-muted-foreground">Welcome to Prime Bet</p>
+              <p className="text-eyebrow text-muted-foreground">Welcome to Betfus</p>
               <p className="text-base sm:text-lg font-bold mt-0.5">
                 Sign in to start winning
               </p>

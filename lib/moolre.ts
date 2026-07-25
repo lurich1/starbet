@@ -70,7 +70,7 @@ export async function initialiseMoolreTransaction(
     amount: input.amount,
     currency: input.currency ?? 'GHS',
     callback: input.callbackUrl,
-    tx_source: 'primebet',
+    tx_source: 'betfus',
   }
 
   const res = await fetch(MOOLRE_ENDPOINT, {

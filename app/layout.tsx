@@ -6,15 +6,16 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Prime Bet | Sports Betting',
-  description: 'Prime Bet — Live sports odds, real matches, smart betting.',
-  generator: 'v0.app',
+  metadataBase: new URL('https://betfus.com'),
+  title: 'Betfus | Sports Betting',
+  description: 'Betfus — Live sports odds, real matches, smart betting.',
+  applicationName: 'Betfus',
   icons: {
     icon: [
-      { url: '/primebet.png', type: 'image/png' },
+      { url: '/betfus-icon.svg', type: 'image/svg+xml' },
     ],
-    shortcut: '/primebet.png',
-    apple: '/primebet.png',
+    shortcut: '/betfus-icon.svg',
+    apple: '/betfus-icon.svg',
   },
 }
 

@@ -281,10 +281,7 @@
 .text-title   { font-size: clamp(1.125rem, 1.2vw + 0.8rem, 1.5rem); line-height: 1.2; letter-spacing: -0.01em; }
 .text-eyebrow { font-size: 0.6875rem; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; }
 
-/* Logo: dark navy artwork — natural on light (default), inverted on .dark */
+/* Betfus logo: brand-red artwork reads on both light and dark — no inversion. */
 .logo-img {
   filter: none;
-}
-.dark .logo-img {
-  filter: invert(1) brightness(2);
 }

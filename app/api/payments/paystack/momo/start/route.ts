@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     const charge = await chargeMobileMoney({
       reference,
       amount,
-      email: user.email || `user-${reference}@starbet.app`,
+      email: user.email || `user-${reference}@betfus.com`,
       phone,
       provider: body.provider ?? 'mtn',
     })

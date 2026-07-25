@@ -49,10 +49,10 @@ function Form() {
             <ArrowLeft className="w-5 h-5" />
             <span>Back</span>
           </Link>
-          <Link href="/" className="flex items-center" aria-label="Bettivo home">
+          <Link href="/" className="flex items-center" aria-label="Betfus home">
             <Image
-              src="/bettivo-logo.svg"
-              alt="Bettivo"
+              src="/betfus-logo.svg"
+              alt="Betfus"
               width={360}
               height={104}
               className="logo-img h-7 w-auto"

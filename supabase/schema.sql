@@ -1,5 +1,5 @@
 -- ============================================================================
--- PrimeBet — Supabase schema
+-- Betfus — Supabase schema
 -- ----------------------------------------------------------------------------
 -- Paste this whole file into Supabase Studio → SQL editor → New query → Run.
 -- It's idempotent: every CREATE uses "IF NOT EXISTS" so you can re-run safely.
