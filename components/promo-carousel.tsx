@@ -198,8 +198,9 @@ export function PromoCarousel() {
                 <div aria-hidden className="absolute -left-16 -bottom-14 w-56 h-56 rounded-full bg-black/25 blur-3xl" />
 
                 <div className="relative h-full px-5 sm:px-6 py-5 flex items-center gap-4">
-                  {/* Left: copy + CTA */}
-                  <div className="flex-1 min-w-0 flex flex-col justify-between h-full">
+                  {/* Left: copy + CTA — capped width so it never runs under the
+                      icon or the corner controls. */}
+                  <div className="flex-1 min-w-0 max-w-[70%] sm:max-w-[62%] flex flex-col justify-between h-full">
                     <div className="min-w-0">
                       <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.18em] font-bold text-white/85">
                         {promo.eyebrow}
@@ -254,23 +255,26 @@ export function PromoCarousel() {
         })}
       </div>
 
-      {/* Arrows — hidden on touch so they don't fight the swipe area; visible on hover for desktop */}
-      <button
-        onClick={() => setIndex((i) => (i - 1 + PROMOS.length) % PROMOS.length)}
-        className="hidden sm:flex absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 items-center justify-center rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50 transition-colors"
-        aria-label="Previous promo"
-      >
-        <ChevronLeft className="w-5 h-5" />
-      </button>
-      <button
-        onClick={() => setIndex((i) => (i + 1) % PROMOS.length)}
-        className="hidden sm:flex absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 items-center justify-center rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50 transition-colors"
-        aria-label="Next promo"
-      >
-        <ChevronRight className="w-5 h-5" />
-      </button>
+      {/* Nav arrows — compact pair in the bottom-right so they never overlap
+          the headline/CTA. Hidden on touch where swipe + dots suffice. */}
+      <div className="hidden sm:flex absolute bottom-3 right-3 gap-1.5">
+        <button
+          onClick={() => setIndex((i) => (i - 1 + PROMOS.length) % PROMOS.length)}
+          className="w-7 h-7 flex items-center justify-center rounded-full bg-black/35 backdrop-blur-sm text-white hover:bg-black/55 transition-colors"
+          aria-label="Previous promo"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <button
+          onClick={() => setIndex((i) => (i + 1) % PROMOS.length)}
+          className="w-7 h-7 flex items-center justify-center rounded-full bg-black/35 backdrop-blur-sm text-white hover:bg-black/55 transition-colors"
+          aria-label="Next promo"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
 
-      {/* Dots — anchored to the top-right so they never overlap the CTA on the bottom-left */}
+      {/* Dots — top-right, clear of the copy and the bottom-right arrows. */}
       <div className="absolute top-3 right-3 flex gap-1.5">
         {PROMOS.map((p, i) => (
           <button
