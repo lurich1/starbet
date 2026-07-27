@@ -1,0 +1,36 @@
+<svg viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <defs>
+    <linearGradient id="streak" x1="0" y1="220" x2="220" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8bc34a" stop-opacity="0"/>
+      <stop offset="1" stop-color="#8bc34a"/>
+    </linearGradient>
+    <radialGradient id="ballShade" cx="0.35" cy="0.32" r="0.75">
+      <stop stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#c9d2da"/>
+    </radialGradient>
+  </defs>
+
+  <!-- speed streak -->
+  <path d="M8 196 C 70 176, 120 150, 176 74" stroke="url(#streak)" stroke-width="26" stroke-linecap="round" opacity="0.75"/>
+  <path d="M20 208 C 78 190, 128 166, 190 92" stroke="url(#streak)" stroke-width="10" stroke-linecap="round" opacity="0.5"/>
+
+  <!-- sparkles -->
+  <g fill="#ffffff">
+    <circle cx="196" cy="150" r="2.4" opacity="0.9"/>
+    <circle cx="176" cy="176" r="1.8" opacity="0.7"/>
+    <circle cx="150" cy="40" r="2" opacity="0.8"/>
+    <circle cx="60" cy="150" r="1.6" opacity="0.6"/>
+  </g>
+
+  <!-- ball -->
+  <circle cx="146" cy="74" r="52" fill="url(#ballShade)" stroke="#e2e8f0" stroke-width="1.5"/>
+  <g fill="#0f172a">
+    <path d="M146 44 l16 12 -6 19 h-20 l-6 -19 z"/>
+    <path d="M110 66 l17 4 3 19 -15 12 -13 -13 z" opacity="0.92"/>
+    <path d="M182 66 l-17 4 -3 19 15 12 13 -13 z" opacity="0.92"/>
+    <path d="M132 104 l7 16 14 0 7 -16 -14 -8 z" opacity="0.9"/>
+  </g>
+  <g stroke="#0f172a" stroke-width="1.4" opacity="0.35">
+    <path d="M146 22 v14 M104 52 l12 8 M188 52 l-12 8 M116 122 l8 -12 M176 122 l-8 -12"/>
+  </g>
+</svg>

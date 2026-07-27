@@ -37,6 +37,9 @@ interface Promo {
   /** Optional banner image path in /public — overlays under the copy. Drop a
    *  licensed/commissioned banner here and it replaces the gradient art. */
   image?: string
+  /** Optional right-side cutout art (SVG/PNG in /public). Swap in a licensed
+   *  player cutout here to replace the default football graphic. */
+  art?: string
 }
 
 // Per-currency amount maps. Tune these per market; they're marketing values,
@@ -77,6 +80,7 @@ const PROMOS: Promo[] = [
     gradient: 'from-amber-400 via-orange-500 to-rose-600',
     accent: 'text-white',
     image: '/promo-bonus.jpg',
+    art: '/hero-player.svg',
   },
   {
     id: 'refer-a-friend',
@@ -241,13 +245,26 @@ export function PromoCarousel() {
                     </Link>
                   </div>
 
-                  {/* Right: oversized icon in a glowing halo */}
-                  <div className="relative shrink-0 flex items-center justify-center w-20 sm:w-32">
-                    <div aria-hidden className="absolute inset-0 m-auto w-16 h-16 sm:w-24 sm:h-24 rounded-full bg-white/15 blur-xl" />
-                    <div className="relative flex items-center justify-center w-16 h-16 sm:w-24 sm:h-24 rounded-full bg-white/10 ring-1 ring-white/25 backdrop-blur-sm">
-                      <Glyph className="w-9 h-9 sm:w-14 sm:h-14 text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.3)]" strokeWidth={1.75} />
+                  {/* Right: cutout art if provided, else an icon in a halo */}
+                  {promo.art ? (
+                    <div className="relative shrink-0 flex items-center justify-center w-24 sm:w-36">
+                      <div aria-hidden className="absolute inset-0 m-auto w-20 h-20 sm:w-28 sm:h-28 rounded-full bg-white/15 blur-xl" />
+                      <Image
+                        src={promo.art}
+                        alt=""
+                        width={160}
+                        height={160}
+                        className="relative w-24 h-24 sm:w-36 sm:h-36 object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.35)]"
+                      />
                     </div>
-                  </div>
+                  ) : (
+                    <div className="relative shrink-0 flex items-center justify-center w-20 sm:w-32">
+                      <div aria-hidden className="absolute inset-0 m-auto w-16 h-16 sm:w-24 sm:h-24 rounded-full bg-white/15 blur-xl" />
+                      <div className="relative flex items-center justify-center w-16 h-16 sm:w-24 sm:h-24 rounded-full bg-white/10 ring-1 ring-white/25 backdrop-blur-sm">
+                        <Glyph className="w-9 h-9 sm:w-14 sm:h-14 text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.3)]" strokeWidth={1.75} />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
