@@ -1,14 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import { AlertCircle, CalendarDays, ChevronRight, Gamepad2 } from 'lucide-react'
+import { AlertCircle, CalendarDays } from 'lucide-react'
 import { Header } from '@/components/header'
 import { SportsSidebar } from '@/components/sports-sidebar'
 import { BetSlip } from '@/components/bet-slip'
 import { MatchCard } from '@/components/match-card'
 import { MatchListSkeleton } from '@/components/match-card-skeleton'
 import { PromoCarousel } from '@/components/promo-carousel'
+import { QuickActions } from '@/components/quick-actions'
 import { LeaguesWithUpcoming } from '@/components/top-events'
 import { MobileNav } from '@/components/mobile-nav'
 import { HomeBalanceCard } from '@/components/home-balance-card'
@@ -16,8 +16,6 @@ import { WinnersTicker } from '@/components/winners-ticker'
 import { SectionHeader } from '@/components/section-header'
 import { useMatches } from '@/hooks/use-matches'
 import { removeSelectionById, toggleSelection } from '@/lib/bet-slip-utils'
-import { towerCoeffAt } from '@/lib/tower-rush'
-import { spinxpressHref } from '@/lib/spinxpress'
 import { getUserId } from '@/lib/user-session'
 import type { BetSelection } from '@/lib/types'
 
@@ -46,34 +44,16 @@ export default function HomePage() {
         <SportsSidebar activeSport={activeSport} onSportChange={setActiveSport} />
 
         <main className="flex-1 min-w-0 min-h-[calc(100vh-64px)] pb-20 xl:pb-0">
-          <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-5 lg:p-6 space-y-6">
+          <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-5 lg:p-6 space-y-5">
             <HomeBalanceCard />
 
-            <WinnersTicker />
-
+            {/* Hero promo */}
             <PromoCarousel />
 
-            {/* Casino games entry */}
-            <Link
-              href={spinxpressHref(userId)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group relative block overflow-hidden rounded-xl border border-border bg-gradient-to-r from-[#1f3a93] to-[#2563eb] p-4 shadow-card hover:shadow-card-hover transition-shadow"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
-                  <Gamepad2 className="w-6 h-6 text-white" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-white flex items-center gap-2">
-                    Tower Rush
-                    <span className="text-[10px] font-bold uppercase bg-[#ffd54a] text-[#3a2a00] px-1.5 py-0.5 rounded">New</span>
-                  </p>
-                  <p className="text-xs text-white/70 truncate">Stack the tower, cash out before it collapses. Min x{towerCoeffAt(1).toFixed(2)} · max unlimited.</p>
-                </div>
-                <ChevronRight className="w-5 h-5 text-white/80 group-hover:translate-x-0.5 transition-transform" />
-              </div>
-            </Link>
+            {/* Quick-action tiles — one-tap destinations */}
+            <QuickActions userId={userId} />
+
+            <WinnersTicker />
 
             <LeaguesWithUpcoming matches={matches} />
 
