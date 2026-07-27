@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Loader2, Smartphone, AlertTriangle, CheckCircle2, RefreshCw } from 'lucide-react'
+import { Loader2, Smartphone, AlertTriangle, CheckCircle2, RefreshCw, ChevronRight, Lightbulb } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
@@ -15,17 +15,29 @@ interface ProviderOption {
 }
 
 const PROVIDERS: ProviderOption[] = [
-  { key: 'mtn', label: 'MTN MoMo', short: 'MTN', brand: 'bg-amber-400 text-black border-amber-500' },
+  { key: 'mtn', label: 'MTN Mobile Money', short: 'MTN', brand: 'bg-amber-400 text-black border-amber-500' },
   { key: 'vod', label: 'Telecel Cash', short: 'Telecel', brand: 'bg-red-500 text-white border-red-600' },
-  { key: 'atl', label: 'AirtelTigo', short: 'AT', brand: 'bg-blue-500 text-white border-blue-600' },
+  { key: 'atl', label: 'AirtelTigo Money', short: 'AT', brand: 'bg-blue-500 text-white border-blue-600' },
 ]
+
+// Mask a phone for the "switch" row (e.g. "0591234937" → "059****937").
+function maskPhone(raw: string): string {
+  const digits = raw.replace(/\D/g, '')
+  if (digits.length < 7) return raw || '—'
+  return `${digits.slice(0, 3)}****${digits.slice(-3)}`
+}
 
 const POLL_INTERVAL_MS = 4000
 const POLL_TIMEOUT_MS = 120_000
 
 interface MobileMoneyFormProps {
   userId: string
-  amount: number
+  /** Minimum deposit for the user's country. Seeds the amount input. */
+  minAmount: number
+  /** Maximum per-transaction deposit (shown in the info list). */
+  maxAmount?: number
+  /** Current wallet balance, shown above the amount input. */
+  balance?: number
   currency: string
   defaultPhone?: string | null
   purpose: 'deposit' | 'verification'
@@ -59,7 +71,9 @@ type Phase =
 
 export function MobileMoneyForm({
   userId,
-  amount,
+  minAmount,
+  maxAmount = 50_000,
+  balance,
   currency,
   defaultPhone,
   purpose,
@@ -70,6 +84,11 @@ export function MobileMoneyForm({
   const endpoints = ENDPOINTS[gateway]
   const [provider, setProvider] = useState<Provider>('mtn')
   const [phone, setPhone] = useState(defaultPhone ?? '')
+  const [amountStr, setAmountStr] = useState(minAmount ? String(minAmount) : '')
+  const amount = Number(amountStr) || 0
+  // "Switch" toggles: the network picker and the phone editor.
+  const [switchingNetwork, setSwitchingNetwork] = useState(false)
+  const [editingPhone, setEditingPhone] = useState(!defaultPhone)
   const [phase, setPhase] = useState<Phase>({ kind: 'form' })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -161,7 +180,16 @@ export function MobileMoneyForm({
     e.preventDefault()
     setError(null)
     if (!phone.trim()) {
+      setEditingPhone(true)
       setError('Enter the phone number tied to your mobile-money wallet.')
+      return
+    }
+    if (amount < minAmount) {
+      setError(`Minimum deposit is ${currency} ${minAmount.toFixed(2)}.`)
+      return
+    }
+    if (amount > maxAmount) {
+      setError(`Maximum per transaction is ${currency} ${maxAmount.toLocaleString()}.`)
       return
     }
     setSubmitting(true)
@@ -304,63 +332,122 @@ export function MobileMoneyForm({
     )
   }
 
+  const activeProvider = PROVIDERS.find((p) => p.key === provider)!
+  const canPay = amount >= minAmount && amount <= maxAmount && phone.replace(/\D/g, '').length >= 9
+
   return (
-    <form onSubmit={submit} className="space-y-4">
-      <div>
-        <label className="text-eyebrow text-muted-foreground block mb-2">
-          Mobile-money network
-        </label>
-        <div className="grid grid-cols-3 gap-2">
-          {PROVIDERS.map((p) => {
-            const selected = provider === p.key
-            return (
+    <form onSubmit={submit} className="space-y-3">
+      {/* Phone number row — masked, with "Switch" to edit */}
+      {editingPhone ? (
+        <div className="rounded-xl border border-border bg-card px-3 py-2.5">
+          <div className="flex items-center gap-3">
+            <Smartphone className="w-5 h-5 text-muted-foreground shrink-0" />
+            <Input
+              type="tel"
+              inputMode="numeric"
+              placeholder="0244 000 000"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="h-8 border-0 bg-transparent px-0 font-mono tabular-nums text-base focus-visible:ring-0"
+              autoComplete="tel"
+              autoFocus={!defaultPhone}
+            />
+            {defaultPhone && (
               <button
-                key={p.key}
                 type="button"
-                onClick={() => setProvider(p.key)}
-                className={`relative py-3 rounded-xl border-2 text-xs font-bold transition-all ${
-                  selected
-                    ? `${p.brand} shadow-card-pressed`
-                    : 'bg-secondary text-foreground border-border hover:border-primary/40 hover:-translate-y-0.5 hover:shadow-card'
-                }`}
+                onClick={() => { setPhone(defaultPhone); setEditingPhone(false) }}
+                className="text-xs font-semibold text-muted-foreground hover:text-foreground shrink-0"
               >
-                <span className="block text-[10px] uppercase tracking-wide opacity-80">
-                  {p.short}
-                </span>
-                <span className="block text-[11px] font-bold mt-0.5 whitespace-nowrap">
-                  {p.label}
-                </span>
-                {selected && (
-                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-foreground text-background flex items-center justify-center">
-                    <CheckCircle2 className="w-3 h-3" />
-                  </span>
-                )}
+                Cancel
               </button>
-            )
-          })}
+            )}
+          </div>
         </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setEditingPhone(true)}
+          className="w-full flex items-center justify-between rounded-xl border border-border bg-card px-3 py-3 text-left hover:border-primary/40 transition-colors"
+        >
+          <span className="flex items-center gap-3 min-w-0">
+            <Smartphone className="w-5 h-5 text-muted-foreground shrink-0" />
+            <span className="font-semibold tabular-nums text-foreground">{maskPhone(phone)}</span>
+          </span>
+          <span className="inline-flex items-center gap-0.5 text-sm font-semibold text-primary shrink-0">
+            Switch <ChevronRight className="w-4 h-4" />
+          </span>
+        </button>
+      )}
+
+      {/* Network row — current network, with "Switch" to change */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setSwitchingNetwork((v) => !v)}
+          className="w-full flex items-center justify-between rounded-xl border border-border bg-card px-3 py-3 text-left hover:border-primary/40 transition-colors"
+        >
+          <span className="flex items-center gap-3 min-w-0">
+            <span className={`grid place-items-center w-8 h-8 rounded-md border text-[10px] font-extrabold shrink-0 ${activeProvider.brand}`}>
+              {activeProvider.short}
+            </span>
+            <span className="font-semibold text-foreground truncate">{activeProvider.label}</span>
+          </span>
+          <span className="inline-flex items-center gap-0.5 text-sm font-semibold text-primary shrink-0">
+            Switch <ChevronRight className={`w-4 h-4 transition-transform ${switchingNetwork ? 'rotate-90' : ''}`} />
+          </span>
+        </button>
+        {switchingNetwork && (
+          <div className="grid grid-cols-3 gap-2 mt-2">
+            {PROVIDERS.map((p) => {
+              const selected = provider === p.key
+              return (
+                <button
+                  key={p.key}
+                  type="button"
+                  onClick={() => { setProvider(p.key); setSwitchingNetwork(false) }}
+                  className={`relative py-2.5 rounded-xl border-2 text-[11px] font-bold transition-all ${
+                    selected ? `${p.brand} shadow-card-pressed` : 'bg-secondary text-foreground border-border hover:border-primary/40'
+                  }`}
+                >
+                  {p.short}
+                  {selected && (
+                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-foreground text-background flex items-center justify-center">
+                      <CheckCircle2 className="w-3 h-3" />
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        )}
       </div>
 
-      <div>
-        <label className="text-eyebrow text-muted-foreground block mb-2">
-          Mobile-money phone number
-        </label>
-        <div className="relative">
-          <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            type="tel"
-            inputMode="numeric"
-            placeholder="0244XXXXXXX"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="pl-9 h-12 bg-secondary border-border font-mono tabular-nums"
-            autoComplete="tel"
-            required
-          />
+      {/* Balance line */}
+      {typeof balance === 'number' && (
+        <div className="flex items-center justify-end gap-1.5 pt-1 text-sm">
+          <Lightbulb className="w-4 h-4 text-primary" />
+          <span className="text-muted-foreground">
+            Balance ({currency}) <span className="font-bold text-foreground tabular-nums">{balance.toFixed(2)}</span>
+          </span>
         </div>
-        <p className="text-[11px] text-muted-foreground mt-1.5">
-          You&apos;ll get a prompt on this phone to approve {currency} {amount.toFixed(2)}.
-        </p>
+      )}
+
+      {/* Amount input — label left, value right */}
+      <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 h-16">
+        <label htmlFor="momo-amount" className="text-base font-semibold text-foreground shrink-0">
+          Amount ({currency})
+        </label>
+        <input
+          id="momo-amount"
+          type="number"
+          inputMode="decimal"
+          step="0.01"
+          min={minAmount}
+          value={amountStr}
+          onChange={(e) => setAmountStr(e.target.value)}
+          placeholder={`min. ${minAmount.toFixed(2)}`}
+          className="flex-1 min-w-0 bg-transparent text-right text-2xl font-extrabold tabular-nums text-foreground placeholder:text-muted-foreground/60 placeholder:text-base placeholder:font-medium outline-none"
+        />
       </div>
 
       {error && (
@@ -372,8 +459,8 @@ export function MobileMoneyForm({
 
       <Button
         type="submit"
-        disabled={submitting}
-        className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-sm shadow-card hover:shadow-card-hover hover:-translate-y-0.5 active:translate-y-0 transition-all"
+        disabled={submitting || !canPay}
+        className="w-full h-14 bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-base shadow-card hover:shadow-card-hover disabled:opacity-50 transition-all"
       >
         {submitting ? (
           <>
@@ -381,9 +468,23 @@ export function MobileMoneyForm({
             Sending prompt…
           </>
         ) : (
-          `Pay ${currency} ${amount.toFixed(2)} with ${PROVIDERS.find((p) => p.key === provider)?.short}`
+          'Top Up Now'
         )}
       </Button>
+
+      {/* Info list */}
+      <ol className="pt-2 space-y-1.5 text-[13px] text-muted-foreground leading-relaxed list-decimal pl-5">
+        <li>
+          The maximum amount per transaction is {currency}{' '}
+          <span className="font-bold text-foreground">{maxAmount.toLocaleString()}.00</span>. To deposit more, make multiple payments.
+        </li>
+        <li>
+          The minimum amount you can deposit is {currency}{' '}
+          <span className="font-bold text-foreground">{minAmount.toFixed(2)}</span>.
+        </li>
+        <li>There are no transaction fees — the deposit is free.</li>
+        <li>You can only withdraw your balance to the mobile number you used to create your account.</li>
+      </ol>
 
       {onSwitchToCard && (
         <button

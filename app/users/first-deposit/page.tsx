@@ -108,6 +108,8 @@ function DepositForm() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [profileLoading, setProfileLoading] = useState(Boolean(userId))
   const [payMode, setPayMode] = useState<PayMode>('momo')
+  // Deposit method tab for the mobile-money reference layout (GH).
+  const [depositTab, setDepositTab] = useState<'momo' | 'paybill'>('momo')
   // When the user comes back from Moolre with ?moolre=success we re-fetch
   // the profile and show the success screen built from the fresh totals.
   const [showSuccess, setShowSuccess] = useState(false)
@@ -605,6 +607,66 @@ function DepositForm() {
                   ← Start over
                 </button>
               </div>
+            ) : showMoMoFlow && profile ? (
+              /* football.com-style mobile-money deposit */
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h1 className="text-xl font-bold tracking-tight">{headingTitle}</h1>
+                  <span className="text-eyebrow text-muted-foreground">
+                    {currency} {formatMoney(profile.balance, currency)}
+                  </span>
+                </div>
+
+                {/* Method tabs */}
+                <div className="flex mb-5 border-b border-border">
+                  <button
+                    type="button"
+                    onClick={() => setDepositTab('momo')}
+                    className={`relative flex-1 pb-3 text-sm font-bold transition-colors ${
+                      depositTab === 'momo' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Mobile Money
+                    {depositTab === 'momo' && (
+                      <span className="absolute left-0 right-0 -bottom-px h-0.5 rounded-full bg-primary" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDepositTab('paybill')}
+                    className={`relative flex-1 pb-3 text-sm font-bold transition-colors ${
+                      depositTab === 'paybill' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Paybill
+                    {depositTab === 'paybill' && (
+                      <span className="absolute left-0 right-0 -bottom-px h-0.5 rounded-full bg-primary" />
+                    )}
+                  </button>
+                </div>
+
+                {depositTab === 'momo' ? (
+                  <MobileMoneyForm
+                    userId={profile.id}
+                    minAmount={minAmount}
+                    maxAmount={50_000}
+                    balance={profile.balance}
+                    currency={currency}
+                    defaultPhone={profile.phone ?? null}
+                    purpose={purpose}
+                    gateway={gateway === 'flutterwave' ? 'flutterwave' : 'paystack'}
+                    onSuccess={handleDepositSuccess}
+                  />
+                ) : (
+                  <div className="rounded-xl border border-dashed border-border bg-secondary/40 p-6 text-center space-y-2">
+                    <Building2 className="w-8 h-8 mx-auto text-muted-foreground" />
+                    <p className="text-sm font-semibold text-foreground">Paybill coming soon</p>
+                    <p className="text-xs text-muted-foreground">
+                      Use Mobile Money for now — Paybill deposits will be available shortly.
+                    </p>
+                  </div>
+                )}
+              </div>
             ) : (
               <>
                 {profile && (
@@ -666,67 +728,6 @@ function DepositForm() {
                   </div>
                 )}
 
-                {showMoMoFlow && profile ? (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-eyebrow text-muted-foreground block mb-2">
-                        Amount ({currency})
-                      </label>
-                      <Input
-                        type="number"
-                        inputMode="decimal"
-                        step="0.01"
-                        min={minAmount}
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        className="text-2xl h-14 bg-secondary border-border font-extrabold tabular-nums"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-4 gap-2">
-                      {[minAmount, minAmount * 1.5, minAmount * 2.5, minAmount * 5]
-                        .map((n) => Math.round(n).toString())
-                        .map((preset) => (
-                          <button
-                            key={preset}
-                            type="button"
-                            onClick={() => setAmount(preset)}
-                            className={`py-2 rounded-lg text-sm font-bold transition-all ${
-                              amount === preset
-                                ? 'bg-primary text-primary-foreground shadow-card-pressed'
-                                : 'bg-secondary text-foreground hover:bg-secondary/70 hover:-translate-y-0.5 hover:shadow-card'
-                            }`}
-                          >
-                            {preset}
-                          </button>
-                        ))}
-                    </div>
-
-                    {Number(amount) >= minAmount ? (
-                      <MobileMoneyForm
-                        userId={profile.id}
-                        amount={Number(amount)}
-                        currency={currency}
-                        defaultPhone={profile.phone ?? null}
-                        purpose={purpose}
-                        gateway={gateway === 'flutterwave' ? 'flutterwave' : 'paystack'}
-                        onSuccess={handleDepositSuccess}
-                        onSwitchToCard={() => setPayMode('card')}
-                      />
-                    ) : (
-                      <div className="p-3 rounded-lg bg-primary/5 border border-primary/15 text-[11px] text-muted-foreground flex items-start gap-2">
-                        <Info className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
-                        <span>
-                          Enter at least{' '}
-                          <strong className="text-foreground">
-                            {currency} {minAmount}
-                          </strong>{' '}
-                          to send a mobile-money prompt.
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                ) : (
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
                     <label className="text-eyebrow text-muted-foreground block mb-2">
@@ -844,7 +845,6 @@ function DepositForm() {
                     </button>
                   )}
                 </form>
-                )}
               </>
             )}
           </div>
