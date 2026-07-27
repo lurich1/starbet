@@ -1,29 +1,30 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { AlertCircle, CalendarDays } from 'lucide-react'
+import { useState } from 'react'
+import Link from 'next/link'
+import { AlertCircle, ChevronRight } from 'lucide-react'
 import { Header } from '@/components/header'
 import { SportsSidebar } from '@/components/sports-sidebar'
 import { BetSlip } from '@/components/bet-slip'
 import { MatchCard } from '@/components/match-card'
 import { MatchListSkeleton } from '@/components/match-card-skeleton'
 import { PromoCarousel } from '@/components/promo-carousel'
-import { QuickActions } from '@/components/quick-actions'
+import { HomeCategoryRow } from '@/components/home-category-row'
+import { BookingCodeBar } from '@/components/booking-code-bar'
+import { HomeQuickChips } from '@/components/home-quick-chips'
+import { HomeHotTabs, type HomeTab } from '@/components/home-hot-tabs'
 import { LeaguesWithUpcoming } from '@/components/top-events'
 import { MobileNav } from '@/components/mobile-nav'
 import { HomeBalanceCard } from '@/components/home-balance-card'
 import { WinnersTicker } from '@/components/winners-ticker'
-import { SectionHeader } from '@/components/section-header'
 import { useMatches } from '@/hooks/use-matches'
 import { removeSelectionById, toggleSelection } from '@/lib/bet-slip-utils'
-import { getUserId } from '@/lib/user-session'
 import type { BetSelection } from '@/lib/types'
 
 export default function HomePage() {
   const [activeSport, setActiveSport] = useState('football')
-  const [userId, setUserId] = useState<string | null>(null)
-  useEffect(() => setUserId(getUserId()), [])
   const [selections, setSelections] = useState<BetSelection[]>([])
+  const [homeTab, setHomeTab] = useState<HomeTab>('hot')
 
   // Show all upcoming games (not just today) so the home matches the football
   // page — a strict "today" tz filter was hiding games that show under View all.
@@ -50,10 +51,18 @@ export default function HomePage() {
             <HomeBalanceCard />
 
             {/* Hero promo */}
-            <PromoCarousel />
+            <div id="promos" className="scroll-mt-20">
+              <PromoCarousel />
+            </div>
 
-            {/* Quick-action tiles — one-tap destinations */}
-            <QuickActions userId={userId} />
+            {/* Category icons — one-tap destinations */}
+            <HomeCategoryRow />
+
+            {/* Paste a booking code straight into the slip */}
+            <BookingCodeBar onLoad={setSelections} />
+
+            {/* Quick-filter chips */}
+            <HomeQuickChips />
 
             <WinnersTicker />
 
@@ -66,61 +75,59 @@ export default function HomePage() {
               </div>
             )}
 
-            <section id="live">
-              <SectionHeader
-                title="Live Now"
-                icon={
-                  <span className="w-2 h-2 bg-live rounded-full animate-pulse-live" />
+            <section id="live" className="space-y-3">
+              <HomeHotTabs
+                value={homeTab}
+                onChange={setHomeTab}
+                liveCount={liveMatches.length}
+              />
+              {(() => {
+                const list =
+                  homeTab === 'live'
+                    ? liveMatches
+                    : homeTab === 'matches'
+                      ? upcomingMatches
+                      : upcomingMatches.slice(0, 12)
+                if (loading) return <MatchListSkeleton count={6} />
+                if (list.length === 0) {
+                  return (
+                    <EmptyState
+                      title={
+                        homeTab === 'live'
+                          ? 'No live matches right now'
+                          : 'No games to show right now'
+                      }
+                      description={
+                        homeTab === 'live'
+                          ? 'Switch to Hot or Matches, or check live again shortly.'
+                          : 'Check back soon or browse the football page.'
+                      }
+                    />
+                  )
                 }
-                count={liveMatches.length}
-                viewAllHref="/live"
-              />
-              {loading ? (
-                <MatchListSkeleton count={4} />
-              ) : liveMatches.length === 0 ? (
-                <EmptyState
-                  title="No live matches right now"
-                  description="Browse upcoming games below or check live again in a few minutes."
-                />
-              ) : (
-                <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
-                  {liveMatches.map((match) => (
-                    <MatchCard
-                      key={match.id}
-                      match={match}
-                      selections={selections}
-                      onToggleSelection={handleToggleSelection}
-                    />
-                  ))}
-                </div>
-              )}
-            </section>
+                return (
+                  <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
+                    {list.map((match) => (
+                      <MatchCard
+                        key={match.id}
+                        match={match}
+                        selections={selections}
+                        onToggleSelection={handleToggleSelection}
+                      />
+                    ))}
+                  </div>
+                )
+              })()}
 
-            <section>
-              <SectionHeader
-                title="Upcoming games"
-                description="Top games across every league"
-                icon={<CalendarDays className="w-4 h-4 text-primary" />}
-                count={upcomingMatches.length}
-                viewAllHref="/football"
-              />
-              {loading ? (
-                <MatchListSkeleton count={6} />
-              ) : upcomingMatches.length === 0 ? (
-                <EmptyState
-                  title="No upcoming games right now"
-                  description="Check back soon or browse the football page."
-                />
-              ) : (
-                <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
-                  {upcomingMatches.slice(0, 12).map((match) => (
-                    <MatchCard
-                      key={match.id}
-                      match={match}
-                      selections={selections}
-                      onToggleSelection={handleToggleSelection}
-                    />
-                  ))}
+              {homeTab !== 'live' && (
+                <div className="text-center pt-1">
+                  <Link
+                    href="/football"
+                    className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:brightness-110 transition"
+                  >
+                    View all matches
+                    <ChevronRight className="w-4 h-4" />
+                  </Link>
                 </div>
               )}
             </section>
