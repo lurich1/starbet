@@ -71,7 +71,7 @@ const COUNTRIES: Record<CountryCode, CountryConfig> = {
     currencySymbol: 'GHS',
     locale: 'en-GB',
     dialCode: '233',
-    requiresKyc: true,
+    requiresKyc: false,
     kycLabel: 'Ghana Card number',
     kycPlaceholder: 'GHA-XXXXXXXXX-X',
     kycError: 'Ghana Card number is required (format: GHA-XXXXXXXXX-X)',
