@@ -1,12 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Eye, EyeOff, ArrowLeft } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Eye, EyeOff, Loader2, Mail, Lock } from 'lucide-react'
+import { AuthShell, AuthField, AuthButton } from '@/components/auth-shell'
 import { saveUserSession } from '@/lib/user-session'
 import { SUPPORT_TELEGRAM_URL } from '@/lib/support'
 
@@ -42,141 +40,87 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <header className="bg-card border-b border-border">
-        <div className="max-w-md mx-auto px-4 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft className="w-5 h-5" />
-            <span>Back</span>
-          </Link>
-          <Link href="/" className="flex items-center" aria-label="Betfus home">
-            <Image
-              src="/betfus-logo.svg"
-              alt="Betfus"
-              width={360}
-              height={104}
-              className="logo-img h-7 w-auto"
-            />
-          </Link>
-          <div className="w-16" />
-        </div>
-      </header>
+    <AuthShell active="login">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <AuthField
+          icon={Mail}
+          type="text"
+          inputMode="email"
+          placeholder="Email or phone number"
+          value={identifier}
+          onChange={(e) => setIdentifier(e.target.value)}
+          autoComplete="username"
+          required
+        />
 
-      <main className="flex-1 flex items-center justify-center p-4 py-8">
-        <div className="relative w-full max-w-md">
-          {/* Decorative ambient glows — give the auth card a sense of place */}
-          <div aria-hidden className="absolute -top-16 -left-12 w-56 h-56 rounded-full bg-primary/20 blur-3xl pointer-events-none" />
-          <div aria-hidden className="absolute -bottom-16 -right-12 w-56 h-56 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
-
-          <div className="relative bg-card rounded-2xl border border-border p-6 sm:p-8 shadow-card ring-1 ring-primary/10">
-            <div className="text-center mb-7">
-              <h1 className="text-title font-bold text-foreground mb-1.5 tracking-tight">Welcome back</h1>
-              <p className="text-sm text-muted-foreground">Sign in to your account to continue</p>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="space-y-1.5">
-                <label htmlFor="identifier" className="text-xs font-semibold text-foreground">
-                  Email or phone number
-                </label>
-                <Input
-                  id="identifier"
-                  type="text"
-                  inputMode="email"
-                  placeholder="you@example.com or 0244XXXXXXX"
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                  className="h-12 bg-secondary border-border"
-                  autoComplete="username"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="password" className="text-xs font-semibold text-foreground">
-                    Password
-                  </label>
-                  <Link href="#" className="text-xs font-medium text-primary hover:text-primary/80 transition-colors">
-                    Forgot password?
-                  </Link>
-                </div>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pr-10 h-12 bg-secondary border-border"
-                    autoComplete="current-password"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="remember"
-                  className="w-4 h-4 rounded border-border bg-input accent-primary"
-                />
-                <label htmlFor="remember" className="text-xs text-muted-foreground">
-                  Remember me for 30 days
-                </label>
-              </div>
-
-              {error && (
-                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-xs text-destructive font-medium">
-                  {error}
-                </div>
-              )}
-
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="w-full h-12 bg-gradient-to-b from-primary to-primary/85 text-primary-foreground hover:brightness-110 font-bold text-sm shadow-lg shadow-primary/25 hover:-translate-y-0.5 active:translate-y-0 transition-all"
-              >
-                {isLoading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                    Signing in…
-                  </div>
-                ) : (
-                  'Sign In'
-                )}
-              </Button>
-            </form>
-
-            <p className="text-center mt-6 text-sm text-muted-foreground">
-              {"Don't have an account? "}
-              <Link href="/register" className="text-primary font-semibold hover:text-primary/80 transition-colors">
-                Sign up
-              </Link>
-            </p>
-          </div>
-
-          <p className="relative text-center mt-5 text-xs text-muted-foreground">
-            Need help?{' '}
-            <Link
-              href={SUPPORT_TELEGRAM_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary font-medium hover:text-primary/80 transition-colors"
+        <AuthField
+          icon={Lock}
+          type={showPassword ? 'text' : 'password'}
+          placeholder="Enter your password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoComplete="current-password"
+          required
+          trailing={
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="text-gray-500 hover:text-white transition-colors"
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
-              Contact Support
-            </Link>
-          </p>
+              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            </button>
+          }
+        />
+
+        <div className="flex items-center justify-between">
+          <label className="flex items-center gap-2 text-xs text-gray-400">
+            <input
+              type="checkbox"
+              className="w-4 h-4 rounded border-[#2a323e] bg-[#1b212b] accent-[#8bc34a]"
+            />
+            Remember me
+          </label>
+          <Link href="#" className="text-xs font-medium text-[#8bc34a] hover:brightness-110">
+            Forgot password?
+          </Link>
         </div>
-      </main>
-    </div>
+
+        {error && (
+          <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-xs text-red-400 font-medium">
+            {error}
+          </div>
+        )}
+
+        <AuthButton type="submit" disabled={isLoading}>
+          {isLoading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" /> Signing in…
+            </>
+          ) : (
+            'Log In'
+          )}
+        </AuthButton>
+
+        <p className="text-center text-sm text-gray-400 pt-1">
+          {"Don't have an account? "}
+          <Link href="/register" className="text-[#8bc34a] font-semibold hover:brightness-110">
+            Register
+          </Link>
+        </p>
+
+        <p className="text-center text-xs text-gray-500">
+          Need help?{' '}
+          <Link
+            href={SUPPORT_TELEGRAM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[#8bc34a] font-medium hover:brightness-110"
+          >
+            Contact Support
+          </Link>
+        </p>
+      </form>
+    </AuthShell>
   )
 }

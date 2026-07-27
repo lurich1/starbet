@@ -3,10 +3,8 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
-import { Eye, EyeOff, ArrowLeft, Check, Loader2, Gift, Lock } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Eye, EyeOff, Check, Loader2, Gift, Lock, User, Mail, Phone, IdCard } from 'lucide-react'
+import { AuthShell, AuthField, AuthButton } from '@/components/auth-shell'
 import { saveUserSession } from '@/lib/user-session'
 import {
   DEFAULT_COUNTRY,
@@ -27,8 +25,6 @@ function RegisterForm() {
   const [kyc, setKyc] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  // Lazy-init from ?ref= so the real referral code is on the field at first
-  // paint — no demo flash, no useEffect tick.
   const [referralCode, setReferralCode] = useState(() =>
     (params.get('ref') ?? '').toUpperCase(),
   )
@@ -38,14 +34,11 @@ function RegisterForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Keep the field in sync if the ref param changes mid-page (e.g. router swap).
   useEffect(() => {
     const ref = params.get('ref')
     if (ref) setReferralCode(ref.toUpperCase())
   }, [params])
 
-  // When the user arrived via a referral link (?ref=CODE) the code is locked —
-  // they can't edit, delete, or clear it, so the referrer stays attributed.
   const referralLocked = Boolean(params.get('ref'))
 
   const passwordRequirements = [
@@ -81,8 +74,7 @@ function RegisterForm() {
       const userId = data.user.id as string
       const userName = (data.user.name as string) || name.trim()
       saveUserSession(userId, userName)
-      const wasReferred = !!data.user.referredByCode
-      if (wasReferred) {
+      if (data.user.referredByCode) {
         router.push(`/users/first-deposit?userId=${userId}`)
       } else {
         router.push('/me')
@@ -96,316 +88,203 @@ function RegisterForm() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <header className="bg-card border-b border-border">
-        <div className="max-w-md mx-auto px-4 h-14 flex items-center justify-between">
-          <Link
-            href="/"
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span>Back</span>
-          </Link>
-          <Link href="/" className="flex items-center" aria-label="Betfus home">
-            <Image
-              src="/betfus-logo.svg"
-              alt="Betfus"
-              width={360}
-              height={104}
-              className="logo-img h-7 w-auto"
-            />
-          </Link>
-          <div className="w-16" />
-        </div>
-      </header>
-
-      <main className="flex-1 flex items-center justify-center p-4 py-8">
-        <div className="relative w-full max-w-md">
-          {/* Ambient glows match the login + balance card visual language */}
-          <div aria-hidden className="absolute -top-16 -left-12 w-56 h-56 rounded-full bg-primary/20 blur-3xl pointer-events-none" />
-          <div aria-hidden className="absolute -bottom-16 -right-12 w-56 h-56 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
-
-          <div className="relative bg-card rounded-2xl border border-border p-6 sm:p-8 shadow-card ring-1 ring-primary/10">
-            <div className="text-center mb-6">
-              <h1 className="text-title font-bold text-foreground mb-1.5 tracking-tight">Create account</h1>
-              <p className="text-muted-foreground text-sm">
-                Join Betfus and start winning today
-              </p>
-            </div>
-
-            {referralCode && (
-              <div className="bg-primary/10 border border-primary/30 rounded-xl p-3 mb-5 flex items-center gap-3 shadow-card">
-                <span className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
-                  <Gift className="w-4 h-4 text-primary" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-eyebrow text-muted-foreground">Referred by</p>
-                  <p className="font-mono text-sm text-primary tracking-wider font-bold leading-tight">
-                    {referralCode}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <label htmlFor="country" className="text-sm font-medium text-foreground">
-                  Country
-                </label>
-                <select
-                  id="country"
-                  value={country}
-                  onChange={(e) => setCountry(e.target.value as CountryCode)}
-                  className="h-11 w-full rounded-md bg-secondary border border-border px-3 text-sm text-foreground"
-                  required
-                >
-                  {listCountries().map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.flag}  {c.name} ({c.currency})
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[11px] text-muted-foreground">
-                  Your wallet will be in {countryCfg.currency}.
-                </p>
-              </div>
-
-              <div className="space-y-1.5">
-                <label htmlFor="name" className="text-sm font-medium text-foreground">
-                  Full name
-                </label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="Jane Doe"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="h-11 bg-secondary border-border"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label htmlFor="email" className="text-sm font-medium text-foreground">
-                  Email
-                </label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="h-11 bg-secondary border-border"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label htmlFor="phone" className="text-sm font-medium text-foreground">
-                  Phone number
-                </label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  inputMode="tel"
-                  placeholder={`+${countryCfg.dialCode} …`}
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="h-11 bg-secondary border-border"
-                  autoComplete="tel"
-                  required
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  We use this when paying out withdrawals. {countryCfg.name} numbers
-                  accepted with or without +{countryCfg.dialCode}.
-                </p>
-              </div>
-
-              {countryCfg.requiresKyc && (
-                <div className="space-y-1.5">
-                  <label htmlFor="kyc" className="text-sm font-medium text-foreground">
-                    {countryCfg.kycLabel}
-                  </label>
-                  <Input
-                    id="kyc"
-                    type="text"
-                    inputMode="text"
-                    placeholder={countryCfg.kycPlaceholder}
-                    value={kyc}
-                    onChange={(e) => setKyc(country === 'GH' ? e.target.value.toUpperCase() : e.target.value)}
-                    className="h-11 bg-secondary border-border tracking-wider font-mono"
-                    maxLength={country === 'GH' ? 15 : 20}
-                    required
-                  />
-                  <p className="text-[11px] text-muted-foreground">
-                    Required for account verification.
-                  </p>
-                </div>
-              )}
-
-              <div className="space-y-1.5">
-                <label htmlFor="password" className="text-sm font-medium text-foreground">
-                  Password
-                </label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="Create a password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pr-10 h-11 bg-secondary border-border"
-                    required
-                    minLength={6}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                  </button>
-                </div>
-                <div className="space-y-1 pt-1">
-                  {passwordRequirements.map((req, index) => (
-                    <div key={index} className="flex items-center gap-2 text-xs">
-                      <div
-                        className={`w-4 h-4 rounded-full flex items-center justify-center ${
-                          req.met ? 'bg-success text-success-foreground' : 'bg-muted'
-                        }`}
-                      >
-                        {req.met && <Check className="w-3 h-3" />}
-                      </div>
-                      <span className={req.met ? 'text-success' : 'text-muted-foreground'}>
-                        {req.text}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="confirmPassword"
-                  className="text-sm font-medium text-foreground"
-                >
-                  Confirm Password
-                </label>
-                <div className="relative">
-                  <Input
-                    id="confirmPassword"
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    placeholder="Re-enter your password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="pr-10 h-11 bg-secondary border-border"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff className="w-5 h-5" />
-                    ) : (
-                      <Eye className="w-5 h-5" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label htmlFor="referral" className="text-sm font-medium text-foreground">
-                  Referral Code{' '}
-                  <span className="text-muted-foreground">
-                    {referralLocked ? '(from your referral link)' : '(optional)'}
-                  </span>
-                </label>
-                <div className="relative">
-                  <Input
-                    id="referral"
-                    type="text"
-                    placeholder=""
-                    value={referralCode}
-                    onChange={(e) => {
-                      // Locked when it came from a referral link — ignore edits.
-                      if (referralLocked) return
-                      setReferralCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))
-                    }}
-                    maxLength={8}
-                    readOnly={referralLocked}
-                    aria-readonly={referralLocked}
-                    className={`h-11 bg-secondary border-border uppercase tracking-widest font-mono ${
-                      referralLocked ? 'pr-9 opacity-90 cursor-not-allowed' : ''
-                    }`}
-                  />
-                  {referralLocked && (
-                    <Lock className="w-4 h-4 text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2" />
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2 pt-1">
-                <input
-                  type="checkbox"
-                  id="terms"
-                  checked={acceptTerms}
-                  onChange={(e) => setAcceptTerms(e.target.checked)}
-                  className="w-4 h-4 mt-0.5 rounded border-border bg-input accent-primary"
-                  required
-                />
-                <label htmlFor="terms" className="text-xs text-muted-foreground">
-                  I agree to the{' '}
-                  <Link href="#" className="text-primary hover:underline">
-                    Terms of Service
-                  </Link>{' '}
-                  and{' '}
-                  <Link href="#" className="text-primary hover:underline">
-                    Privacy Policy
-                  </Link>
-                </label>
-              </div>
-
-              {error && (
-                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-xs text-destructive font-medium">
-                  {error}
-                </div>
-              )}
-
-              <Button
-                type="submit"
-                disabled={loading || !acceptTerms}
-                className="w-full h-12 bg-gradient-to-b from-primary to-primary/85 text-primary-foreground hover:brightness-110 font-bold text-sm shadow-lg shadow-primary/25 hover:-translate-y-0.5 active:translate-y-0 transition-all"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating account…
-                  </>
-                ) : (
-                  'Create account'
-                )}
-              </Button>
-
-              <p className="text-center text-sm text-muted-foreground pt-2">
-                Already have an account?{' '}
-                <Link href="/login" className="text-primary font-semibold hover:text-primary/80 transition-colors">
-                  Sign in
-                </Link>
-              </p>
-            </form>
+    <AuthShell active="register">
+      {referralCode && (
+        <div className="bg-[#8bc34a]/10 border border-[#8bc34a]/30 rounded-xl p-3 mb-4 flex items-center gap-3">
+          <span className="w-9 h-9 rounded-lg bg-[#8bc34a]/15 flex items-center justify-center shrink-0">
+            <Gift className="w-4 h-4 text-[#8bc34a]" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase tracking-wide text-gray-400 font-semibold">Referred by</p>
+            <p className="font-mono text-sm text-[#8bc34a] tracking-wider font-bold leading-tight">
+              {referralCode}
+            </p>
           </div>
         </div>
-      </main>
-    </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-3.5">
+        {/* Country */}
+        <div className="relative">
+          <select
+            value={country}
+            onChange={(e) => setCountry(e.target.value as CountryCode)}
+            className="w-full h-12 rounded-xl bg-[#1b212b] border border-[#2a323e] px-4 text-sm text-white outline-none focus:border-[#8bc34a]/70 focus:ring-2 focus:ring-[#8bc34a]/30 appearance-none"
+            required
+          >
+            {listCountries().map((c) => (
+              <option key={c.code} value={c.code} className="bg-[#161b22]">
+                {c.flag}  {c.name} ({c.currency})
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] text-gray-500 mt-1 px-1">
+            Your wallet will be in {countryCfg.currency}.
+          </p>
+        </div>
+
+        <AuthField
+          icon={User}
+          type="text"
+          placeholder="Create username"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+        />
+        <AuthField
+          icon={Mail}
+          type="email"
+          placeholder="Enter your e-mail"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <AuthField
+          icon={Phone}
+          type="tel"
+          inputMode="tel"
+          placeholder={`Phone number (+${countryCfg.dialCode})`}
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          autoComplete="tel"
+          required
+        />
+
+        {countryCfg.requiresKyc && (
+          <AuthField
+            icon={IdCard}
+            type="text"
+            placeholder={`${countryCfg.kycLabel} — ${countryCfg.kycPlaceholder}`}
+            value={kyc}
+            onChange={(e) => setKyc(country === 'GH' ? e.target.value.toUpperCase() : e.target.value)}
+            maxLength={country === 'GH' ? 15 : 20}
+            className="tracking-wider font-mono"
+            required
+          />
+        )}
+
+        <AuthField
+          icon={Lock}
+          type={showPassword ? 'text' : 'password'}
+          placeholder="Create password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          minLength={6}
+          trailing={
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="text-gray-500 hover:text-white transition-colors"
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            </button>
+          }
+        />
+        <AuthField
+          icon={Lock}
+          type={showConfirmPassword ? 'text' : 'password'}
+          placeholder="Confirm password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          required
+          trailing={
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="text-gray-500 hover:text-white transition-colors"
+              aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+            >
+              {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            </button>
+          }
+        />
+
+        <div className="flex items-center gap-4 pt-0.5">
+          {passwordRequirements.map((req, i) => (
+            <div key={i} className="flex items-center gap-1.5 text-[11px]">
+              <span
+                className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                  req.met ? 'bg-[#8bc34a] text-[#0d1117]' : 'bg-[#232a35]'
+                }`}
+              >
+                {req.met && <Check className="w-3 h-3" />}
+              </span>
+              <span className={req.met ? 'text-[#8bc34a]' : 'text-gray-500'}>{req.text}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Referral code */}
+        <div className="relative">
+          <Gift className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Referral code (optional)"
+            value={referralCode}
+            onChange={(e) => {
+              if (referralLocked) return
+              setReferralCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))
+            }}
+            maxLength={8}
+            readOnly={referralLocked}
+            className={`w-full h-12 rounded-xl bg-[#1b212b] border border-[#2a323e] pl-11 pr-11 text-sm text-white uppercase tracking-widest font-mono placeholder:text-gray-500 placeholder:normal-case placeholder:tracking-normal placeholder:font-sans outline-none focus:border-[#8bc34a]/70 focus:ring-2 focus:ring-[#8bc34a]/30 ${
+              referralLocked ? 'opacity-90 cursor-not-allowed' : ''
+            }`}
+          />
+          {referralLocked && (
+            <Lock className="w-4 h-4 text-gray-500 absolute right-3.5 top-1/2 -translate-y-1/2" />
+          )}
+        </div>
+
+        <label className="flex items-start gap-2 text-xs text-gray-400 pt-0.5">
+          <input
+            type="checkbox"
+            checked={acceptTerms}
+            onChange={(e) => setAcceptTerms(e.target.checked)}
+            className="w-4 h-4 mt-0.5 rounded border-[#2a323e] bg-[#1b212b] accent-[#8bc34a]"
+            required
+          />
+          <span>
+            By accessing I confirm that I am at least 18 and agree to the{' '}
+            <Link href="#" className="text-[#8bc34a] font-semibold hover:brightness-110">
+              Terms of Service
+            </Link>
+            .
+          </span>
+        </label>
+
+        {error && (
+          <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-xs text-red-400 font-medium">
+            {error}
+          </div>
+        )}
+
+        <AuthButton type="submit" disabled={loading || !acceptTerms}>
+          {loading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" /> Creating account…
+            </>
+          ) : (
+            'Sign Up'
+          )}
+        </AuthButton>
+
+        <p className="text-center text-sm text-gray-400 pt-1">
+          Already have an account?{' '}
+          <Link href="/login" className="text-[#8bc34a] font-semibold hover:brightness-110">
+            Log In
+          </Link>
+        </p>
+      </form>
+    </AuthShell>
   )
 }
 
 export default function RegisterPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+    <Suspense fallback={<div className="min-h-screen bg-[#0d1117]" />}>
       <RegisterForm />
     </Suspense>
   )
