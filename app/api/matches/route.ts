@@ -76,7 +76,14 @@ export async function GET(request: Request) {
 
   // Hide finished custom matches from the public feed. A finished match
   // has minute === 'FT' (set by the admin "Final result" button).
-  const allCustom = await readCustomMatchesForSport(sport)
+  // Resilient: if the table isn't there yet (fresh DB / migration not run),
+  // fall back to no custom matches instead of 500ing the whole feed.
+  let allCustom: Match[] = []
+  try {
+    allCustom = await readCustomMatchesForSport(sport)
+  } catch (e) {
+    console.error('[api/matches] custom matches load failed:', e)
+  }
   const customMatches = hydrateAll(
     allCustom.filter((m) => m.minute !== 'FT'),
     overrides,
