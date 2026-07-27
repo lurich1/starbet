@@ -79,8 +79,7 @@ const PROMOS: Promo[] = [
     Icon: Trophy,
     gradient: 'from-amber-400 via-orange-500 to-rose-600',
     accent: 'text-white',
-    image: '/promo-bonus.jpg',
-    art: '/hero-player.svg',
+    image: '/second.png',
   },
   {
     id: 'refer-a-friend',
@@ -95,7 +94,7 @@ const PROMOS: Promo[] = [
     Icon: Gift,
     gradient: 'from-fuchsia-500 via-purple-600 to-indigo-700',
     accent: 'text-white',
-    image: '/promo-referral.jpg',
+    image: '/first.png',
   },
   {
     id: 'weekend-booster',
