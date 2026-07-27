@@ -234,6 +234,82 @@ export function AuthField({
   )
 }
 
+// Portal auth shell (Admin / Partner sign-in + register). Same dark #0d1117 +
+// lime-green look as the player AuthShell, but a single centered card with an
+// icon badge instead of the Register/Log In tab switcher.
+export function PortalAuthShell({
+  icon: Icon,
+  badge,
+  title,
+  subtitle,
+  footer,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  badge: string
+  title: string
+  subtitle?: React.ReactNode
+  footer?: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <div className="min-h-screen bg-[#0d1117] text-white flex flex-col">
+      <header className="border-b border-white/10">
+        <div className="max-w-md mx-auto w-full px-4 h-14 flex items-center justify-between">
+          <Link
+            href="/"
+            className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span className="text-sm">Back</span>
+          </Link>
+          <Link href="/" className="flex items-center" aria-label="Betfus home">
+            <Image
+              src="/betfus-logo.svg"
+              alt="Betfus"
+              width={360}
+              height={104}
+              className="logo-img h-7 w-auto brightness-0 invert"
+            />
+          </Link>
+          <div className="w-14" />
+        </div>
+      </header>
+
+      <main className="flex-1 flex items-center justify-center p-4 py-8">
+        <div className="relative w-full max-w-md">
+          <div aria-hidden className="absolute -top-16 -left-12 w-56 h-56 rounded-full bg-[#8bc34a]/20 blur-3xl pointer-events-none" />
+          <div aria-hidden className="absolute -bottom-16 -right-12 w-56 h-56 rounded-full bg-[#8bc34a]/10 blur-3xl pointer-events-none" />
+
+          <div className="relative bg-[#161b22] rounded-2xl border border-[#232a35] p-6 sm:p-8 shadow-xl">
+            <div className="text-center mb-6">
+              <div className="relative w-14 h-14 mx-auto mb-3">
+                <div aria-hidden className="absolute inset-0 rounded-2xl bg-[#8bc34a]/25 blur-xl" />
+                <div className="relative w-14 h-14 rounded-2xl bg-[#8bc34a]/10 border border-[#8bc34a]/30 flex items-center justify-center">
+                  <Icon className="w-7 h-7 text-[#8bc34a]" />
+                </div>
+              </div>
+              <span className="inline-block text-[11px] font-bold uppercase tracking-wider text-[#8bc34a] border border-[#8bc34a]/30 bg-[#8bc34a]/10 rounded-full px-2.5 py-0.5 mb-2">
+                {badge}
+              </span>
+              <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
+              {subtitle && (
+                <p className="text-sm text-gray-400 mt-1.5 leading-relaxed">{subtitle}</p>
+              )}
+            </div>
+
+            {children}
+          </div>
+
+          {footer && (
+            <div className="relative text-center text-xs text-gray-500 mt-4">{footer}</div>
+          )}
+        </div>
+      </main>
+    </div>
+  )
+}
+
 // Full-width lime-green submit button.
 export function AuthButton({
   children,
