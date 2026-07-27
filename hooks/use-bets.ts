@@ -27,10 +27,17 @@ export function useBets(options: UseBetsOptions = {}) {
   const lastErrorCodeRef = useRef<string | null>(null)
 
   const refresh = useCallback(async () => {
+    const userId = options.scope === 'admin' ? null : (options.scope ?? getUserId())
+    // Logged-out player (and not the admin list): nothing to fetch. Hitting
+    // /api/bets with no userId is the admin "list all" path → 401 spam.
+    if (options.scope !== 'admin' && !userId) {
+      setBets([])
+      setError(null)
+      return
+    }
     setLoading(true)
     setError(null)
     try {
-      const userId = options.scope === 'admin' ? null : (options.scope ?? getUserId())
       const url = userId ? `/api/bets?userId=${encodeURIComponent(userId)}` : '/api/bets'
       const res = await fetch(url, { cache: 'no-store' })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
