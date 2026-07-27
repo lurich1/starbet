@@ -81,18 +81,36 @@ export function MatchCard({ match, selections, onToggleSelection }: MatchCardPro
       </div>
 
       <div className="p-3 sm:p-4 space-y-3.5">
-        {/* Teams + live scoreline */}
-        <div className="space-y-2">
-          <TeamRow
-            name={match.homeTeam}
-            url={match.homeFlagUrl}
-            score={match.isLive ? (match.homeScore ?? 0) : undefined}
-          />
-          <TeamRow
-            name={match.awayTeam}
-            url={match.awayFlagUrl}
-            score={match.isLive ? (match.awayScore ?? 0) : undefined}
-          />
+        {/* Teams — home · kickoff/score · away (SportyBet-style) */}
+        <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2">
+          <TeamColumn name={match.homeTeam} url={match.homeFlagUrl} />
+
+          <div className="flex flex-col items-center justify-center gap-1 px-1 pt-1 min-w-[64px]">
+            {match.isLive ? (
+              <>
+                <span className="text-xl font-extrabold tabular-nums leading-none text-foreground">
+                  {match.homeScore ?? 0}
+                  <span className="text-muted-foreground mx-1">-</span>
+                  {match.awayScore ?? 0}
+                </span>
+                <span className="text-[10px] font-bold text-live">{match.minute}</span>
+              </>
+            ) : (
+              <>
+                <span className="text-sm font-bold tabular-nums leading-none text-foreground">
+                  {match.startTime}
+                </span>
+                <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Today
+                </span>
+              </>
+            )}
+            <span className="text-[9px] font-bold uppercase tracking-wider text-primary/70">
+              1X2
+            </span>
+          </div>
+
+          <TeamColumn name={match.awayTeam} url={match.awayFlagUrl} />
         </div>
 
         {/* Odds row */}
@@ -167,27 +185,13 @@ export function MatchCard({ match, selections, onToggleSelection }: MatchCardPro
   )
 }
 
-function TeamRow({
-  name,
-  url,
-  score,
-}: {
-  name: string
-  url?: string
-  score?: number
-}) {
-  const showScore = typeof score === 'number'
+function TeamColumn({ name, url }: { name: string; url?: string }) {
   return (
-    <div className="flex items-center justify-between gap-2">
-      <div className="flex items-center gap-2.5 min-w-0 flex-1">
-        <TeamCrest name={name} url={url} size={32} />
-        <span className="font-semibold text-sm truncate">{name}</span>
-      </div>
-      {showScore && (
-        <span className="text-lg font-extrabold shrink-0 tabular-nums px-2 min-w-[2ch] text-center text-foreground">
-          {score}
-        </span>
-      )}
+    <div className="flex flex-col items-center text-center gap-1.5 min-w-0">
+      <TeamCrest name={name} url={url} size={38} />
+      <span className="font-semibold text-xs sm:text-[13px] leading-tight line-clamp-2 w-full">
+        {name}
+      </span>
     </div>
   )
 }
