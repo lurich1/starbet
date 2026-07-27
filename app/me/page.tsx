@@ -18,12 +18,11 @@ import {
   EyeOff,
   Wallet,
   Banknote,
-  TrendingUp,
-  TrendingDown,
   Shield,
   LogOut,
   Copy,
   Check,
+  Sparkles,
 } from 'lucide-react'
 import { MobileNav } from '@/components/mobile-nav'
 import { Button } from '@/components/ui/button'
@@ -87,6 +86,28 @@ const MENU_ITEMS = [
   { label: 'How to Play', icon: HelpCircle, href: '/me/how-to-play' },
   { label: 'Settings', icon: Settings, href: '/me/settings' },
 ] as const
+
+// Loyalty tiers derived from lifetime deposits — real data, no fake numbers.
+const LOYALTY_TIERS = [
+  { name: 'Bronze', min: 0, emoji: '🥉' },
+  { name: 'Silver', min: 500, emoji: '🥈' },
+  { name: 'Gold', min: 2_000, emoji: '🥇' },
+  { name: 'Platinum', min: 5_000, emoji: '💎' },
+] as const
+
+function loyaltyFor(totalDeposited: number) {
+  let idx = 0
+  for (let i = 0; i < LOYALTY_TIERS.length; i++) {
+    if (totalDeposited >= LOYALTY_TIERS[i].min) idx = i
+  }
+  const tier = LOYALTY_TIERS[idx]
+  const next = LOYALTY_TIERS[idx + 1] ?? null
+  const progress = next
+    ? Math.min(100, ((totalDeposited - tier.min) / (next.min - tier.min)) * 100)
+    : 100
+  const remaining = next ? Math.max(0, next.min - totalDeposited) : 0
+  return { tier, next, progress, remaining }
+}
 
 export default function MePage() {
   // useSearchParams() needs to live inside a Suspense boundary or
@@ -245,6 +266,8 @@ function MePageInner() {
   const depositHref = profile
     ? `/users/first-deposit?userId=${profile.id}`
     : '/register'
+
+  const loyalty = loyaltyFor(profile?.totalDeposited ?? 0)
 
   const handleWithdraw = () => {
     if (typeof console !== 'undefined') {
@@ -506,72 +529,88 @@ function MePageInner() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col pb-20 xl:pb-0 max-w-lg mx-auto w-full overflow-x-hidden">
-      {/* Profile header — clean, matches site */}
-      <header className="bg-card border-b border-border">
-        <div className="px-3 sm:px-4 pt-4 pb-4 flex items-center gap-2.5 sm:gap-3">
-          <div className="relative shrink-0">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary flex items-center justify-center text-lg sm:text-xl font-bold text-primary-foreground">
-              {profile.name.charAt(0).toUpperCase()}
-            </div>
-            <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-primary border-2 border-card" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              <p className="font-bold text-base sm:text-lg text-foreground truncate">
-                {profile.name}
-              </p>
-              <Shield className="w-4 h-4 text-primary shrink-0" />
-            </div>
-            <button
-              type="button"
-              onClick={copyUserId}
-              className="flex items-center gap-1 text-[11px] sm:text-xs text-muted-foreground hover:text-foreground transition-colors max-w-full"
-            >
-              <span className="font-mono truncate">ID: {profile.id.slice(0, 8)}…</span>
-              {copied ? (
-                <Check className="w-3 h-3 text-primary shrink-0" />
-              ) : (
-                <Copy className="w-3 h-3 shrink-0" />
-              )}
-            </button>
-          </div>
-          <Link
-            href="/"
-            className="text-xs text-primary font-semibold hover:underline shrink-0 px-2.5 sm:px-3 py-1.5 rounded-full border border-primary/40 hover:bg-primary/10 transition-colors"
-          >
-            Home
-          </Link>
-        </div>
-      </header>
-
-      {/* Balance card */}
+      {/* Hero account card — profile · loyalty · balance · actions */}
       <section className="px-3 sm:px-4 pt-4">
-        <div className="relative rounded-2xl bg-gradient-to-br from-card via-card to-secondary/30 border border-border shadow-card overflow-hidden">
+        <div className="relative rounded-2xl bg-gradient-to-br from-secondary/50 via-card to-card border border-border shadow-card overflow-hidden">
           <div aria-hidden className="absolute -right-12 -top-12 w-48 h-48 rounded-full bg-primary/10 blur-3xl" />
           <div className="relative p-4 sm:p-5">
-            <div className="flex items-center justify-between mb-1.5 gap-2">
-              <span className="text-eyebrow text-muted-foreground truncate">
-                Total Balance
-              </span>
+            {/* Profile row */}
+            <div className="flex items-center gap-3">
+              <div className="relative shrink-0">
+                <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-lg font-bold text-primary-foreground">
+                  {profile.name.charAt(0).toUpperCase()}
+                </div>
+                <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-primary border-2 border-card" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <p className="font-bold text-base text-foreground truncate">{profile.name}</p>
+                  <Shield className="w-4 h-4 text-primary shrink-0" />
+                </div>
+                <button
+                  type="button"
+                  onClick={copyUserId}
+                  className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors max-w-full"
+                >
+                  <span className="font-mono truncate">ID: {profile.id.slice(0, 8)}…</span>
+                  {copied ? <Check className="w-3 h-3 text-primary shrink-0" /> : <Copy className="w-3 h-3 shrink-0" />}
+                </button>
+              </div>
+              <Link
+                href="/me/settings"
+                className="shrink-0 p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                aria-label="Settings"
+              >
+                <Settings className="w-5 h-5" />
+              </Link>
+            </div>
+
+            {/* Loyalty tier + progress */}
+            <div className="mt-4">
+              <div className="flex items-center justify-between text-[11px] mb-1.5">
+                <span className="text-muted-foreground">
+                  Loyalty Tier:{' '}
+                  <span className="font-bold text-foreground">
+                    {loyalty.tier.emoji} {loyalty.tier.name}
+                  </span>
+                </span>
+                <span className="text-muted-foreground tabular-nums">
+                  {loyalty.next
+                    ? `${currency} ${formatMoney(loyalty.remaining, currency)} to ${loyalty.next.name}`
+                    : 'Top tier reached'}
+                </span>
+              </div>
+              <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-primary/70 to-primary transition-all"
+                  style={{ width: `${loyalty.progress}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Balance */}
+            <div className="mt-4 flex items-end justify-between gap-2">
+              <div className="min-w-0">
+                <span className="text-eyebrow text-muted-foreground">Total Balance</span>
+                <div className="flex items-baseline gap-2 min-w-0">
+                  <span className="text-sm font-bold text-muted-foreground tabular-nums shrink-0">{currency}</span>
+                  <span className="text-3xl sm:text-display font-black text-foreground tabular-nums truncate">
+                    {balanceHidden ? '••••••' : formatMoney(balance, currency)}
+                  </span>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={() => setBalanceHidden((v) => !v)}
-                className="shrink-0 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                className="shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                 aria-label={balanceHidden ? 'Show balance' : 'Hide balance'}
               >
                 {balanceHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
-            <div className="flex items-baseline gap-2 mb-4 min-w-0">
-              <span className="text-sm font-bold text-muted-foreground tabular-nums shrink-0">
-                {currency}
-              </span>
-              <span className="text-display font-black text-foreground tabular-nums truncate rounded-md px-1 -mx-1">
-                {balanceHidden ? '••••••' : formatMoney(balance, currency)}
-              </span>
-            </div>
 
-            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+            {/* Actions */}
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 mt-4">
               <Link
                 href={depositHref}
                 className="group/btn inline-flex items-center justify-center gap-2 h-12 rounded-xl bg-primary text-primary-foreground font-bold text-sm shadow-card hover:shadow-card-hover hover:-translate-y-0.5 active:translate-y-0 transition-all min-w-0"
@@ -588,6 +627,7 @@ function MePageInner() {
                 <span className="truncate">Withdraw</span>
               </button>
             </div>
+
             {depositToast && (
               <div
                 className={`mt-3 p-2.5 rounded-lg text-xs flex items-start justify-between gap-2 border ${
@@ -623,27 +663,24 @@ function MePageInner() {
           </div>
         </div>
 
-        {/* Stats row */}
-        <div className="grid grid-cols-2 gap-2.5 mt-3">
-          <div className="rounded-xl bg-card border border-border p-3 min-w-0 shadow-card lift-on-hover">
-            <div className="flex items-center gap-1.5 text-muted-foreground text-eyebrow">
-              <TrendingUp className="w-3 h-3 text-primary shrink-0" />
-              <span className="truncate">Deposited</span>
-            </div>
-            <p className="text-sm sm:text-base font-bold text-foreground tabular-nums mt-1.5 truncate">
-              {balanceHidden ? '••••' : `${currency} ${formatMoney(profile.totalDeposited, currency)}`}
-            </p>
-          </div>
-          <div className="rounded-xl bg-card border border-border p-3 min-w-0 shadow-card lift-on-hover">
-            <div className="flex items-center gap-1.5 text-muted-foreground text-eyebrow">
-              <TrendingDown className="w-3 h-3 text-amber-500 shrink-0" />
-              <span className="truncate">Withdrawn</span>
-            </div>
-            <p className="text-sm sm:text-base font-bold text-foreground tabular-nums mt-1.5 truncate">
-              {balanceHidden ? '••••' : `${currency} ${formatMoney(profile.totalWithdrawn, currency)}`}
-            </p>
-          </div>
-        </div>
+        {/* Rewards banner */}
+        <Link
+          href="/me/gifts"
+          className="mt-3 flex items-center justify-between gap-2 rounded-2xl p-3.5 bg-gradient-to-r from-primary/20 via-primary/10 to-transparent border border-primary/30 hover:border-primary/50 transition-colors"
+        >
+          <span className="flex items-center gap-2.5 min-w-0">
+            <span className="grid place-items-center w-9 h-9 rounded-xl bg-primary/20 text-primary shrink-0">
+              <Sparkles className="w-5 h-5" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-bold text-foreground">Betfus Rewards</span>
+              <span className="block text-[11px] text-muted-foreground truncate">Earn as you play</span>
+            </span>
+          </span>
+          <span className="inline-flex items-center gap-0.5 text-sm font-bold text-primary shrink-0">
+            Earn Rewards <ChevronRight className="w-4 h-4" />
+          </span>
+        </Link>
       </section>
 
       {/* Quick links */}
