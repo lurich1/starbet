@@ -25,8 +25,10 @@ export default function HomePage() {
   useEffect(() => setUserId(getUserId()), [])
   const [selections, setSelections] = useState<BetSelection[]>([])
 
+  // Show all upcoming games (not just today) so the home matches the football
+  // page — a strict "today" tz filter was hiding games that show under View all.
   const { matches, liveMatches, upcomingMatches, loading, error } =
-    useMatches(activeSport, { todayOnly: true })
+    useMatches(activeSport)
 
   const handleToggleSelection = (sel: BetSelection) =>
     setSelections((prev) => toggleSelection(prev, sel))
@@ -96,8 +98,8 @@ export default function HomePage() {
 
             <section>
               <SectionHeader
-                title="Today's upcoming games"
-                description="Kicking off today across every league"
+                title="Upcoming games"
+                description="Top games across every league"
                 icon={<CalendarDays className="w-4 h-4 text-primary" />}
                 count={upcomingMatches.length}
                 viewAllHref="/football"
@@ -106,12 +108,12 @@ export default function HomePage() {
                 <MatchListSkeleton count={6} />
               ) : upcomingMatches.length === 0 ? (
                 <EmptyState
-                  title="No matches scheduled for today"
-                  description="Check the football page for the full upcoming list."
+                  title="No upcoming games right now"
+                  description="Check back soon or browse the football page."
                 />
               ) : (
                 <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
-                  {upcomingMatches.map((match) => (
+                  {upcomingMatches.slice(0, 12).map((match) => (
                     <MatchCard
                       key={match.id}
                       match={match}
