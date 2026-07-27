@@ -3,90 +3,92 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light is the DEFAULT (clean sportsbook theme) — dark is opt-in via .dark.
-   Palette: white base, vivid betting-red primary, neutral-gray surfaces. */
+/* Dark is the DEFAULT — matches the login/register screens.
+   Palette: near-black navy surfaces (#0d1117 / #161b22), bright lime-green
+   (~#8bc34a) primary + accents, red reserved for errors + the live indicator. */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.2 0.006 285);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2 0.006 285);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0.006 285);
-  /* Vivid betting red (~#E8112D) primary + accents for both themes */
-  --primary: oklch(0.585 0.232 22);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.965 0.003 285);
-  --secondary-foreground: oklch(0.24 0.006 285);
-  --muted: oklch(0.965 0.003 285);
-  --muted-foreground: oklch(0.55 0.006 285);
-  --accent: oklch(0.585 0.232 22);
-  --accent-foreground: oklch(0.99 0 0);
-  --destructive: oklch(0.585 0.232 22);
+  --background: oklch(0.17 0.02 260);
+  --foreground: oklch(0.97 0 0);
+  --card: oklch(0.22 0.018 260);
+  --card-foreground: oklch(0.97 0 0);
+  --popover: oklch(0.2 0.018 260);
+  --popover-foreground: oklch(0.97 0 0);
+  /* Lime green (~#8bc34a) primary; dark text sits on it. */
+  --primary: oklch(0.78 0.155 130);
+  --primary-foreground: oklch(0.18 0.02 260);
+  --secondary: oklch(0.25 0.018 260);
+  --secondary-foreground: oklch(0.97 0 0);
+  --muted: oklch(0.25 0.018 260);
+  --muted-foreground: oklch(0.7 0.02 260);
+  --accent: oklch(0.78 0.155 130);
+  --accent-foreground: oklch(0.18 0.02 260);
+  --destructive: oklch(0.62 0.23 25);
   --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.92 0.003 285);
-  --input: oklch(0.97 0.002 285);
-  --ring: oklch(0.585 0.232 22);
-  --success: oklch(0.6 0.2 150);
-  --success-foreground: oklch(0.99 0 0);
-  --warning: oklch(0.78 0.16 80);
-  --live: oklch(0.585 0.232 22);
-  --odds: oklch(0.585 0.22 22);
-  --odds-hover: oklch(0.53 0.235 22);
-  --chart-1: oklch(0.585 0.232 22);
+  --border: oklch(0.31 0.018 260);
+  --input: oklch(0.25 0.018 260);
+  --ring: oklch(0.78 0.155 130);
+  --success: oklch(0.78 0.155 130);
+  --success-foreground: oklch(0.18 0.02 260);
+  --warning: oklch(0.8 0.16 80);
+  --live: oklch(0.62 0.23 25);
+  --odds: oklch(0.78 0.155 130);
+  --odds-hover: oklch(0.72 0.155 130);
+  --chart-1: oklch(0.78 0.155 130);
   --chart-2: oklch(0.7 0.15 200);
-  --chart-3: oklch(0.62 0.22 18);
-  --chart-4: oklch(0.78 0.16 80);
+  --chart-3: oklch(0.62 0.23 25);
+  --chart-4: oklch(0.8 0.16 80);
   --chart-5: oklch(0.7 0.15 320);
   --radius: 0.75rem;
-  --sidebar: oklch(1 0 0);
-  --sidebar-foreground: oklch(0.2 0.006 285);
-  --sidebar-primary: oklch(0.585 0.232 22);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.965 0.003 285);
-  --sidebar-accent-foreground: oklch(0.24 0.006 285);
-  --sidebar-border: oklch(0.92 0.003 285);
-  --sidebar-ring: oklch(0.585 0.232 22);
+  --sidebar: oklch(0.2 0.018 260);
+  --sidebar-foreground: oklch(0.97 0 0);
+  --sidebar-primary: oklch(0.78 0.155 130);
+  --sidebar-primary-foreground: oklch(0.18 0.02 260);
+  --sidebar-accent: oklch(0.25 0.018 260);
+  --sidebar-accent-foreground: oklch(0.97 0 0);
+  --sidebar-border: oklch(0.31 0.018 260);
+  --sidebar-ring: oklch(0.78 0.155 130);
 }
 
+/* .dark mirrors :root — the whole app is on the one dark+green scheme. */
 .dark {
-  --background: oklch(0.17 0.035 285);
-  --foreground: oklch(0.96 0.006 300);
-  --card: oklch(0.22 0.04 285);
-  --card-foreground: oklch(0.96 0.006 300);
-  --popover: oklch(0.19 0.04 285);
-  --popover-foreground: oklch(0.96 0.006 300);
-  --primary: oklch(0.62 0.233 24);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.27 0.04 285);
-  --secondary-foreground: oklch(0.96 0.006 300);
-  --muted: oklch(0.27 0.035 285);
-  --muted-foreground: oklch(0.72 0.03 290);
-  --accent: oklch(0.62 0.233 24);
-  --accent-foreground: oklch(0.99 0 0);
-  --destructive: oklch(0.62 0.233 24);
+  --background: oklch(0.17 0.02 260);
+  --foreground: oklch(0.97 0 0);
+  --card: oklch(0.22 0.018 260);
+  --card-foreground: oklch(0.97 0 0);
+  --popover: oklch(0.2 0.018 260);
+  --popover-foreground: oklch(0.97 0 0);
+  --primary: oklch(0.78 0.155 130);
+  --primary-foreground: oklch(0.18 0.02 260);
+  --secondary: oklch(0.25 0.018 260);
+  --secondary-foreground: oklch(0.97 0 0);
+  --muted: oklch(0.25 0.018 260);
+  --muted-foreground: oklch(0.7 0.02 260);
+  --accent: oklch(0.78 0.155 130);
+  --accent-foreground: oklch(0.18 0.02 260);
+  --destructive: oklch(0.62 0.23 25);
   --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.32 0.04 285);
-  --input: oklch(0.25 0.04 285);
-  --ring: oklch(0.62 0.233 24);
-  --success: oklch(0.72 0.2 150);
-  --success-foreground: oklch(0.16 0.03 285);
+  --border: oklch(0.31 0.018 260);
+  --input: oklch(0.25 0.018 260);
+  --ring: oklch(0.78 0.155 130);
+  --success: oklch(0.78 0.155 130);
+  --success-foreground: oklch(0.18 0.02 260);
   --warning: oklch(0.8 0.16 80);
-  --live: oklch(0.62 0.233 24);
-  --odds: oklch(0.62 0.22 24);
-  --odds-hover: oklch(0.68 0.235 24);
-  --chart-1: oklch(0.62 0.233 24);
+  --live: oklch(0.62 0.23 25);
+  --odds: oklch(0.78 0.155 130);
+  --odds-hover: oklch(0.72 0.155 130);
+  --chart-1: oklch(0.78 0.155 130);
   --chart-2: oklch(0.7 0.15 200);
-  --chart-3: oklch(0.64 0.22 18);
+  --chart-3: oklch(0.62 0.23 25);
   --chart-4: oklch(0.8 0.16 80);
-  --chart-5: oklch(0.72 0.15 320);
-  --sidebar: oklch(0.19 0.04 285);
-  --sidebar-foreground: oklch(0.96 0.006 300);
-  --sidebar-primary: oklch(0.62 0.233 24);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.27 0.04 285);
-  --sidebar-accent-foreground: oklch(0.96 0.006 300);
-  --sidebar-border: oklch(0.32 0.04 285);
-  --sidebar-ring: oklch(0.62 0.233 24);
+  --chart-5: oklch(0.7 0.15 320);
+  --sidebar: oklch(0.2 0.018 260);
+  --sidebar-foreground: oklch(0.97 0 0);
+  --sidebar-primary: oklch(0.78 0.155 130);
+  --sidebar-primary-foreground: oklch(0.18 0.02 260);
+  --sidebar-accent: oklch(0.25 0.018 260);
+  --sidebar-accent-foreground: oklch(0.97 0 0);
+  --sidebar-border: oklch(0.31 0.018 260);
+  --sidebar-ring: oklch(0.78 0.155 130);
 }
 
 @theme inline {
@@ -184,17 +186,18 @@
    Three depth tiers. Soft, neutral, theme-aware. Keeps the brand
    green untouched — these shadows are pure value contrast. */
 :root {
+  /* Dark-theme shadows (deeper, since the base is a dark surface). */
   --shadow-card:
-    0 1px 2px -1px rgb(0 0 0 / 0.06),
-    0 2px 6px -2px rgb(0 0 0 / 0.06);
+    0 1px 2px -1px rgb(0 0 0 / 0.4),
+    0 2px 8px -2px rgb(0 0 0 / 0.35);
   --shadow-card-hover:
-    0 2px 4px -2px rgb(0 0 0 / 0.08),
-    0 8px 16px -6px rgb(0 0 0 / 0.12);
+    0 2px 4px -2px rgb(0 0 0 / 0.5),
+    0 10px 24px -6px rgb(0 0 0 / 0.5);
   --shadow-card-pressed:
-    inset 0 1px 2px rgb(0 0 0 / 0.08);
+    inset 0 1px 2px rgb(0 0 0 / 0.4);
   --shadow-popover:
-    0 4px 8px -2px rgb(0 0 0 / 0.10),
-    0 16px 32px -8px rgb(0 0 0 / 0.18);
+    0 4px 12px -2px rgb(0 0 0 / 0.45),
+    0 20px 40px -10px rgb(0 0 0 / 0.55);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -281,7 +284,7 @@
 .text-title   { font-size: clamp(1.125rem, 1.2vw + 0.8rem, 1.5rem); line-height: 1.2; letter-spacing: -0.01em; }
 .text-eyebrow { font-size: 0.6875rem; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; }
 
-/* Betfus logo: brand-red artwork reads on both light and dark — no inversion. */
+/* Betfus logo: render as a clean white mark on the dark surfaces. */
 .logo-img {
-  filter: none;
+  filter: brightness(0) invert(1);
 }
