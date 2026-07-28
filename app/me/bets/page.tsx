@@ -2,7 +2,18 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Receipt, Trophy, ChevronRight, Zap, Loader2, Radio } from 'lucide-react'
+import {
+  Receipt,
+  Trophy,
+  Loader2,
+  Radio,
+  RefreshCw,
+  Share2,
+  Clock,
+  CircleDot,
+  ChevronUp,
+  ChevronDown,
+} from 'lucide-react'
 import { MobileNav } from '@/components/mobile-nav'
 import { MeSubpageHeader } from '@/components/me-subpage-header'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -12,17 +23,20 @@ import { formatMoney } from '@/lib/format-money'
 import { computeCashout } from '@/lib/cashout'
 import type { PlacedBet, Match } from '@/lib/types'
 
-type Filter = 'all' | 'pending' | 'won' | 'lost'
+type MainTab = 'open' | 'history'
+type OpenFilter = 'all' | 'cashout' | 'live'
 
 export default function BetHistoryPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [bets, setBets] = useState<PlacedBet[] | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [filter, setFilter] = useState<Filter>('all')
+  const [tab, setTab] = useState<MainTab>('open')
+  const [openFilter, setOpenFilter] = useState<OpenFilter>('all')
   const [openBet, setOpenBet] = useState<PlacedBet | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [settlingId, setSettlingId] = useState<string | null>(null)
   const [cashingId, setCashingId] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
   // Ticks so the live cash-out value refreshes without a manual reload.
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
@@ -116,43 +130,105 @@ export default function BetHistoryPage() {
     }
   }
 
+  // "Rebet" / share both hand back the booking code so it can be reloaded on
+  // Home. Native share when available, clipboard otherwise.
+  const shareCode = async (code: string) => {
+    const text = `Load my Betfus slip with booking code ${code}.`
+    try {
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        await navigator.share({ title: 'Betfus booking code', text })
+      } else {
+        await navigator.clipboard.writeText(code)
+        setToast(`Code ${code} copied — paste it on Home to rebet.`)
+        setTimeout(() => setToast(null), 2500)
+      }
+    } catch {
+      /* user dismissed share */
+    }
+  }
+
   if (!userId) {
     return (
       <div className="min-h-screen bg-background flex flex-col pb-20 max-w-lg mx-auto w-full">
-        <MeSubpageHeader title="Bet History" />
+        <MeSubpageHeader title="My Bets" />
         <SignInGate />
         <MobileNav selectedBets={[]} activeTab="bets" />
       </div>
     )
   }
 
-  const filtered = (bets ?? []).filter((b) => filter === 'all' || b.status === filter)
-  const counts = {
-    all: bets?.length ?? 0,
-    pending: (bets ?? []).filter((b) => b.status === 'pending').length,
-    won: (bets ?? []).filter((b) => b.status === 'won').length,
-    lost: (bets ?? []).filter((b) => b.status === 'lost').length,
-  }
+  const isBetLive = (b: PlacedBet) =>
+    b.selections.some((s) => liveMatches[s.matchId]?.isLive)
+
+  const all = bets ?? []
+  const pending = all.filter((b) => b.status === 'pending')
+  const settled = all.filter((b) => b.status !== 'pending')
+
+  const openList =
+    openFilter === 'cashout'
+      ? pending.filter((b) => computeCashout(b, now) > 0)
+      : openFilter === 'live'
+        ? pending.filter(isBetLive)
+        : pending
+
+  const list = tab === 'open' ? openList : settled
 
   return (
     <div className="min-h-screen bg-background flex flex-col pb-20 max-w-lg mx-auto w-full">
-      <MeSubpageHeader title="Bet History" />
+      <MeSubpageHeader title="My Bets" />
 
-      <div className="px-3 sm:px-4 pt-4 flex gap-1.5 overflow-x-auto scrollbar-hide">
-        {(['all', 'pending', 'won', 'lost'] as Filter[]).map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap capitalize transition-all ${
-              filter === f
-                ? 'bg-primary text-primary-foreground shadow-card'
-                : 'bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/70'
-            }`}
-          >
-            {f} ({counts[f]})
-          </button>
-        ))}
+      {/* Main tabs: Open Bets / Bet History */}
+      <div className="grid grid-cols-2 border-b border-border bg-card">
+        <button
+          onClick={() => setTab('open')}
+          className={`relative py-3.5 text-sm font-bold transition-colors ${
+            tab === 'open' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Open Bets ({pending.length})
+          {tab === 'open' && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary rounded-full" />}
+        </button>
+        <button
+          onClick={() => setTab('history')}
+          className={`relative py-3.5 text-sm font-bold transition-colors ${
+            tab === 'history' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Bet History
+          {tab === 'history' && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary rounded-full" />}
+        </button>
       </div>
+
+      {/* Filter chips (open tab only) */}
+      {tab === 'open' && (
+        <div className="px-3 sm:px-4 pt-3 flex gap-1.5 overflow-x-auto no-scrollbar">
+          {([
+            { key: 'all', label: 'All' },
+            { key: 'cashout', label: 'Cashout Available' },
+            { key: 'live', label: 'Live Games' },
+          ] as { key: OpenFilter; label: string }[]).map((c) => (
+            <button
+              key={c.key}
+              onClick={() => setOpenFilter(c.key)}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                openFilter === c.key
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-secondary text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {toast && (
+        <div className="px-3 sm:px-4 pt-3">
+          <div className="p-2.5 rounded-lg bg-primary/10 border border-primary/30 text-xs text-foreground font-medium">
+            {toast}
+          </div>
+        </div>
+      )}
 
       <main className="flex-1 px-3 sm:px-4 pt-3">
         {error ? (
@@ -162,26 +238,29 @@ export default function BetHistoryPage() {
         ) : bets === null ? (
           <div className="space-y-2">
             {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-20 rounded-xl" />
+              <Skeleton key={i} className="h-40 rounded-2xl" />
             ))}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : list.length === 0 ? (
           <div className="bg-card border border-dashed border-border rounded-xl p-8 text-center">
             <Receipt className="w-10 h-10 mx-auto mb-3 text-muted-foreground/50" />
-            <p className="font-semibold text-sm text-foreground">No bets to show</p>
+            <p className="font-semibold text-sm text-foreground">
+              {tab === 'open' ? 'No open bets' : 'No settled bets yet'}
+            </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {filter === 'all'
+              {tab === 'open'
                 ? 'Place a bet from the home page to see it here.'
-                : `No ${filter} bets yet.`}
+                : 'Your won and lost bets will appear here.'}
             </p>
           </div>
         ) : (
-          <ul className="space-y-2">
-            {filtered.map((b) => (
-              <BetRow
+          <ul className="space-y-2.5">
+            {list.map((b) => (
+              <BetCard
                 key={b.id}
                 bet={b}
                 onOpen={() => setOpenBet(b)}
+                onShare={() => shareCode(b.code)}
                 isAdmin={isAdmin}
                 settling={settlingId === b.id}
                 onSettle={(status) => handleSettle(b.id, status)}
@@ -209,9 +288,10 @@ export default function BetHistoryPage() {
   )
 }
 
-function BetRow({
+function BetCard({
   bet,
   onOpen,
+  onShare,
   isAdmin = false,
   settling = false,
   onSettle,
@@ -222,6 +302,7 @@ function BetRow({
 }: {
   bet: PlacedBet
   onOpen: () => void
+  onShare: () => void
   isAdmin?: boolean
   settling?: boolean
   onSettle?: (status: 'won' | 'lost') => void
@@ -230,117 +311,134 @@ function BetRow({
   onCashOut?: () => void
   liveMatches?: Record<string, Match>
 }) {
+  const [showDetails, setShowDetails] = useState(true)
   const isWon = bet.status === 'won'
   const isLost = bet.status === 'lost'
   const isPending = bet.status === 'pending'
-  const kind = bet.selections.length > 1 ? `Multiple (${bet.selections.length})` : 'Single'
-  const totalReturn = isWon ? (bet.payout ?? bet.potentialWin) : isPending ? bet.potentialWin : 0
-  const stakeTone = isLost ? 'text-muted-foreground' : 'text-success'
-  const statusLabel = isWon ? 'Won' : isLost ? 'Lost' : null
+  const isMultiple = bet.selections.length > 1
+  const kind = isMultiple ? `Multiple (${bet.selections.length})` : 'Singles'
+  const totalReturn = isWon ? (bet.payout ?? bet.potentialWin) : bet.potentialWin
 
   return (
-    <li className="rounded-2xl overflow-hidden border border-border bg-card shadow-card">
-      <div className="p-3.5">
-        {/* Header: stake + kind · view */}
-        <div className="flex items-center justify-between gap-2">
-          <p className="font-bold text-sm min-w-0 truncate">
-            <span className={stakeTone}>
-              {bet.currency} {formatMoney(bet.stake, bet.currency)}
-            </span>{' '}
-            <span className="text-foreground">{kind}</span>
-          </p>
-          <div className="flex items-center gap-2 shrink-0">
-            {statusLabel && (
-              <span
-                className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                  isWon ? 'bg-success/15 text-success' : 'bg-muted text-muted-foreground'
-                }`}
-              >
-                {isWon && <Trophy className="w-3 h-3 inline mr-0.5 -mt-0.5" />}
-                {statusLabel}
-              </span>
-            )}
+    <li className="rounded-2xl border border-border bg-card shadow-card overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-2 px-3.5 py-2.5 border-b border-border/60">
+        <span className="font-bold text-sm text-foreground">{kind}</span>
+        <div className="flex items-center gap-3">
+          {isPending && (
             <button
               type="button"
-              onClick={onOpen}
-              className="flex items-center gap-0.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+              onClick={onShare}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:brightness-110"
             >
-              View <ChevronRight className="w-3.5 h-3.5" />
+              <RefreshCw className="w-3.5 h-3.5" /> Rebet
             </button>
-          </div>
+          )}
+          {isWon && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-success/15 text-success">
+              <Trophy className="w-3 h-3" /> Won
+            </span>
+          )}
+          {isLost && (
+            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+              Lost
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={onShare}
+            className="text-muted-foreground hover:text-foreground"
+            aria-label="Share booking code"
+          >
+            <Share2 className="w-4 h-4" />
+          </button>
         </div>
+      </div>
 
+      <div className="p-3.5">
         {/* Selections */}
-        <div className="mt-2.5 space-y-2">
-          {bet.selections.map((s) => {
-            const lm = liveMatches[s.matchId]
-            const live = !!lm?.isLive
-            return (
-              <div key={s.id} className="flex items-start justify-between gap-3">
-                <div className="flex items-start gap-2 min-w-0">
-                  <span className="w-2 h-2 rounded-full bg-amber-500 mt-1.5 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-foreground truncate">{s.outcomeLabel}</p>
-                    <p className="text-[11px] text-muted-foreground truncate">{s.marketLabel}</p>
-                    <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1.5">
-                      <span className="truncate">
-                        {s.match.homeTeam} vs {s.match.awayTeam}
-                      </span>
-                      {live && (
-                        <span className="inline-flex items-center gap-1 shrink-0 text-live font-bold">
-                          <Radio className="w-2.5 h-2.5" />
-                          {lm?.minute}
-                          <span className="text-foreground tabular-nums">
-                            {lm?.homeScore ?? 0}-{lm?.awayScore ?? 0}
-                          </span>
-                        </span>
-                      )}
-                    </p>
+        {showDetails && (
+          <div className="space-y-3">
+            {bet.selections.map((s) => {
+              const lm = liveMatches[s.matchId]
+              const live = !!lm?.isLive
+              return (
+                <div key={s.id}>
+                  <div className="flex items-center gap-2">
+                    <CircleDot className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span className="font-bold text-sm text-foreground">{s.outcomeLabel}</span>
+                    <span className="text-sm font-bold text-foreground">@ {s.odds.toFixed(2)}</span>
+                    <span className="text-[11px] text-muted-foreground">{s.marketLabel}</span>
                   </div>
+                  <div className="mt-1 flex items-center gap-2 text-[13px] text-muted-foreground">
+                    <Clock className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">
+                      {s.match.homeTeam} <span className="opacity-60">vs</span> {s.match.awayTeam}
+                    </span>
+                    {live && (
+                      <span className="inline-flex items-center gap-1 shrink-0 text-live font-bold">
+                        <Radio className="w-2.5 h-2.5" />
+                        {lm?.minute}
+                        <span className="text-foreground tabular-nums">
+                          {lm?.homeScore ?? 0}-{lm?.awayScore ?? 0}
+                        </span>
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-0.5 pl-6 text-[11px] text-muted-foreground tabular-nums">
+                    {new Date(bet.placedAt).toLocaleString(undefined, {
+                      day: '2-digit',
+                      month: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </p>
                 </div>
-                <span className="text-sm font-bold text-success tabular-nums shrink-0">
-                  {s.odds.toFixed(2)}
-                </span>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
+        )}
+
+        {/* Details toggle */}
+        <button
+          type="button"
+          onClick={() => setShowDetails((v) => !v)}
+          className="mt-2 ml-auto flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground"
+        >
+          {showDetails ? 'Hide Match Details' : 'Show Match Details'}
+          {showDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+        </button>
+
+        {/* Stake / Pot. Win */}
+        <div className="mt-3 pt-3 border-t border-border/60 space-y-1.5">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Stake</span>
+            <span className="font-bold tabular-nums text-foreground">
+              {formatMoney(bet.stake, bet.currency)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">{isWon ? 'Won' : 'Pot. Win'}</span>
+            <span className={`font-bold tabular-nums ${isWon ? 'text-success' : 'text-foreground'}`}>
+              {formatMoney(totalReturn, bet.currency)}
+            </span>
+          </div>
         </div>
 
-        {/* Stake / To Return */}
-        <div className="mt-3 pt-3 border-t border-border/60 flex items-end justify-between gap-3">
-          <div>
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
-              Stake
-            </p>
-            <p className="text-sm font-bold tabular-nums">
-              {bet.currency} {formatMoney(bet.stake, bet.currency)}
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
-              To Return
-            </p>
-            <p className={`text-sm font-extrabold tabular-nums ${isWon ? 'text-success' : 'text-foreground'}`}>
-              {bet.currency} {formatMoney(totalReturn, bet.currency)}
-            </p>
-          </div>
-        </div>
-
-        {/* Cash Out — running bets only */}
+        {/* Cashout — running bets only */}
         {isPending && onCashOut && cashoutValue > 0 && (
           <button
             type="button"
             onClick={onCashOut}
             disabled={cashingOut}
-            className="mt-3 w-full h-12 rounded-xl bg-gradient-to-b from-amber-400 to-amber-500 text-black font-extrabold flex items-center justify-center gap-2 shadow-md active:scale-[0.99] transition-transform disabled:opacity-60"
+            className="mt-3 w-full h-12 rounded-lg bg-success text-success-foreground font-bold flex items-center justify-center gap-1.5 hover:brightness-105 active:scale-[0.99] transition disabled:opacity-60"
           >
             {cashingOut ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
               <>
-                <Zap className="w-4 h-4" fill="currentColor" />
-                Cash Out
-                <span className="px-2 py-0.5 rounded-md bg-black/10 text-sm tabular-nums">
+                Cashout{' '}
+                <span className="tabular-nums">
                   {bet.currency} {formatMoney(cashoutValue, bet.currency)}
                 </span>
               </>
@@ -373,16 +471,12 @@ function BetRow({
           </div>
         )}
 
-        {/* Booking code + date */}
+        {/* Booking code + details link */}
         <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
           <span className="font-mono tracking-wide">{bet.code}</span>
-          <span className="tabular-nums">
-            {new Date(bet.placedAt).toLocaleDateString(undefined, {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-            })}
-          </span>
+          <button type="button" onClick={onOpen} className="font-semibold hover:text-foreground">
+            View full ticket
+          </button>
         </div>
       </div>
     </li>
