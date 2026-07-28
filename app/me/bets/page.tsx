@@ -13,6 +13,7 @@ import {
   CircleDot,
   ChevronUp,
   ChevronDown,
+  Lock,
 } from 'lucide-react'
 import { MobileNav } from '@/components/mobile-nav'
 import { MeSubpageHeader } from '@/components/me-subpage-header'
@@ -25,6 +26,31 @@ import type { PlacedBet, Match } from '@/lib/types'
 
 type MainTab = 'open' | 'history'
 type OpenFilter = 'all' | 'cashout' | 'live'
+
+// Cash-out is locked during a match's early stage (first N minutes of play) and
+// before kick-off, so a bet can't be cashed out the instant it's placed.
+const EARLY_STAGE_MIN = 15
+
+function parseElapsed(minute?: string): number | null {
+  if (!minute) return null
+  const m = /^(\d+)/.exec(minute)
+  if (m) return parseInt(m[1], 10)
+  if (minute === 'HT') return 45 // half-time is well past the early stage
+  return null
+}
+
+// A bet's cash-out is locked while ANY of its matches hasn't kicked off yet or
+// is still in its early stage. Once every match is live and past EARLY_STAGE_MIN
+// (or at HT/2H), cash-out unlocks.
+function isCashoutLocked(bet: PlacedBet, liveMatches: Record<string, Match>): boolean {
+  return bet.selections.some((s) => {
+    const m = liveMatches[s.matchId]
+    if (!m || !m.isLive) return true // not started / not live yet → locked
+    const elapsed = parseElapsed(m.minute)
+    if (elapsed === null) return false // live but minute unknown → allow
+    return elapsed < EARLY_STAGE_MIN // still in the early minutes → locked
+  })
+}
 
 export default function BetHistoryPage() {
   const [userId, setUserId] = useState<string | null>(null)
@@ -166,7 +192,7 @@ export default function BetHistoryPage() {
 
   const openList =
     openFilter === 'cashout'
-      ? pending.filter((b) => computeCashout(b, now) > 0)
+      ? pending.filter((b) => computeCashout(b, now) > 0 && !isCashoutLocked(b, liveMatches))
       : openFilter === 'live'
         ? pending.filter(isBetLive)
         : pending
@@ -265,6 +291,7 @@ export default function BetHistoryPage() {
                 settling={settlingId === b.id}
                 onSettle={(status) => handleSettle(b.id, status)}
                 cashoutValue={computeCashout(b, now)}
+                cashoutLocked={isCashoutLocked(b, liveMatches)}
                 cashingOut={cashingId === b.id}
                 onCashOut={() => handleCashOut(b.id)}
                 liveMatches={liveMatches}
@@ -296,6 +323,7 @@ function BetCard({
   settling = false,
   onSettle,
   cashoutValue = 0,
+  cashoutLocked = false,
   cashingOut = false,
   onCashOut,
   liveMatches = {},
@@ -307,6 +335,7 @@ function BetCard({
   settling?: boolean
   onSettle?: (status: 'won' | 'lost') => void
   cashoutValue?: number
+  cashoutLocked?: boolean
   cashingOut?: boolean
   onCashOut?: () => void
   liveMatches?: Record<string, Match>
@@ -425,25 +454,32 @@ function BetCard({
           </div>
         </div>
 
-        {/* Cashout — running bets only */}
+        {/* Cashout — running bets only. Locked during the early stage. */}
         {isPending && onCashOut && cashoutValue > 0 && (
-          <button
-            type="button"
-            onClick={onCashOut}
-            disabled={cashingOut}
-            className="mt-3 w-full h-12 rounded-lg bg-success text-success-foreground font-bold flex items-center justify-center gap-1.5 hover:brightness-105 active:scale-[0.99] transition disabled:opacity-60"
-          >
-            {cashingOut ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <>
-                Cashout{' '}
-                <span className="tabular-nums">
-                  {bet.currency} {formatMoney(cashoutValue, bet.currency)}
-                </span>
-              </>
-            )}
-          </button>
+          cashoutLocked ? (
+            <div className="mt-3 w-full h-12 rounded-lg bg-secondary border border-border text-muted-foreground font-semibold flex items-center justify-center gap-1.5 text-sm">
+              <Lock className="w-3.5 h-3.5" />
+              Cashout locked · opens after {EARLY_STAGE_MIN}&apos;
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={onCashOut}
+              disabled={cashingOut}
+              className="mt-3 w-full h-12 rounded-lg bg-success text-success-foreground font-bold flex items-center justify-center gap-1.5 hover:brightness-105 active:scale-[0.99] transition disabled:opacity-60"
+            >
+              {cashingOut ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  Cashout{' '}
+                  <span className="tabular-nums">
+                    {bet.currency} {formatMoney(cashoutValue, bet.currency)}
+                  </span>
+                </>
+              )}
+            </button>
+          )
         )}
 
         {/* Admin-only settle controls for open bets */}
