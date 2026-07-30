@@ -5,7 +5,6 @@ import Link from 'next/link'
 import {
   Receipt,
   Trophy,
-  Loader2,
   Radio,
   RefreshCw,
   Share2,
@@ -21,36 +20,10 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { BetTicketDetails } from '@/components/bet-ticket-details'
 import { getUserId, getUserName } from '@/lib/user-session'
 import { formatMoney } from '@/lib/format-money'
-import { computeCashout } from '@/lib/cashout'
 import type { PlacedBet, Match } from '@/lib/types'
 
 type MainTab = 'open' | 'history'
 type OpenFilter = 'all' | 'cashout' | 'live'
-
-// Cash-out is locked during a match's early stage (first N minutes of play) and
-// before kick-off, so a bet can't be cashed out the instant it's placed.
-const EARLY_STAGE_MIN = 15
-
-function parseElapsed(minute?: string): number | null {
-  if (!minute) return null
-  const m = /^(\d+)/.exec(minute)
-  if (m) return parseInt(m[1], 10)
-  if (minute === 'HT') return 45 // half-time is well past the early stage
-  return null
-}
-
-// A bet's cash-out is locked while ANY of its matches hasn't kicked off yet or
-// is still in its early stage. Once every match is live and past EARLY_STAGE_MIN
-// (or at HT/2H), cash-out unlocks.
-function isCashoutLocked(bet: PlacedBet, liveMatches: Record<string, Match>): boolean {
-  return bet.selections.some((s) => {
-    const m = liveMatches[s.matchId]
-    if (!m || !m.isLive) return true // not started / not live yet → locked
-    const elapsed = parseElapsed(m.minute)
-    if (elapsed === null) return false // live but minute unknown → allow
-    return elapsed < EARLY_STAGE_MIN // still in the early minutes → locked
-  })
-}
 
 export default function BetHistoryPage() {
   const [userId, setUserId] = useState<string | null>(null)
@@ -59,16 +32,7 @@ export default function BetHistoryPage() {
   const [tab, setTab] = useState<MainTab>('open')
   const [openFilter, setOpenFilter] = useState<OpenFilter>('all')
   const [openBet, setOpenBet] = useState<PlacedBet | null>(null)
-  const [isAdmin, setIsAdmin] = useState(false)
-  const [settlingId, setSettlingId] = useState<string | null>(null)
-  const [cashingId, setCashingId] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
-  // Ticks so the live cash-out value refreshes without a manual reload.
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 15_000)
-    return () => clearInterval(t)
-  }, [])
 
   // Current match states (keyed by id) so open bets can show live status/score,
   // since the selections stored on the bet are a placement-time snapshot.
@@ -93,25 +57,6 @@ export default function BetHistoryPage() {
     }
   }, [])
 
-  const handleCashOut = async (id: string) => {
-    setCashingId(id)
-    setError(null)
-    try {
-      const res = await fetch(`/api/bets/${id}/cashout`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ userId: getUserId() }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`)
-      setBets((prev) => (prev ?? []).map((b) => (b.id === id ? (data.bet as PlacedBet) : b)))
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setCashingId(null)
-    }
-  }
-
   useEffect(() => {
     const uid = getUserId()
     setUserId(uid)
@@ -127,34 +72,10 @@ export default function BetHistoryPage() {
         setBets((data.bets ?? []) as PlacedBet[])
       })
       .catch((e) => !cancelled && setError(String(e)))
-    // Only admins get the settle (Won/Lost) controls on open bets.
-    void fetch('/api/admin/me', { cache: 'no-store' })
-      .then((res) => (res.ok ? res.json() : { admin: false }))
-      .then((d) => !cancelled && setIsAdmin(d?.admin === true))
-      .catch(() => {})
     return () => {
       cancelled = true
     }
   }, [])
-
-  const handleSettle = async (id: string, status: 'won' | 'lost') => {
-    setSettlingId(id)
-    setError(null)
-    try {
-      const res = await fetch(`/api/bets/${id}`, {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ status }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`)
-      setBets((prev) => (prev ?? []).map((b) => (b.id === id ? (data.bet as PlacedBet) : b)))
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setSettlingId(null)
-    }
-  }
 
   // "Rebet" / share both hand back the booking code so it can be reloaded on
   // Home. Native share when available, clipboard otherwise.
@@ -190,9 +111,11 @@ export default function BetHistoryPage() {
   const pending = all.filter((b) => b.status === 'pending')
   const settled = all.filter((b) => b.status !== 'pending')
 
+  // Cash-out is locked until a match closes, so nothing is ever "available"
+  // while a bet is open — the filter stays empty by design.
   const openList =
     openFilter === 'cashout'
-      ? pending.filter((b) => computeCashout(b, now) > 0 && !isCashoutLocked(b, liveMatches))
+      ? []
       : openFilter === 'live'
         ? pending.filter(isBetLive)
         : pending
@@ -287,13 +210,6 @@ export default function BetHistoryPage() {
                 bet={b}
                 onOpen={() => setOpenBet(b)}
                 onShare={() => shareCode(b.code)}
-                isAdmin={isAdmin}
-                settling={settlingId === b.id}
-                onSettle={(status) => handleSettle(b.id, status)}
-                cashoutValue={computeCashout(b, now)}
-                cashoutLocked={isCashoutLocked(b, liveMatches)}
-                cashingOut={cashingId === b.id}
-                onCashOut={() => handleCashOut(b.id)}
                 liveMatches={liveMatches}
               />
             ))}
@@ -319,25 +235,11 @@ function BetCard({
   bet,
   onOpen,
   onShare,
-  isAdmin = false,
-  settling = false,
-  onSettle,
-  cashoutValue = 0,
-  cashoutLocked = false,
-  cashingOut = false,
-  onCashOut,
   liveMatches = {},
 }: {
   bet: PlacedBet
   onOpen: () => void
   onShare: () => void
-  isAdmin?: boolean
-  settling?: boolean
-  onSettle?: (status: 'won' | 'lost') => void
-  cashoutValue?: number
-  cashoutLocked?: boolean
-  cashingOut?: boolean
-  onCashOut?: () => void
   liveMatches?: Record<string, Match>
 }) {
   const [showDetails, setShowDetails] = useState(true)
@@ -454,56 +356,11 @@ function BetCard({
           </div>
         </div>
 
-        {/* Cashout — running bets only. Locked during the early stage. */}
-        {isPending && onCashOut && cashoutValue > 0 && (
-          cashoutLocked ? (
-            <div className="mt-3 w-full h-12 rounded-lg bg-secondary border border-border text-muted-foreground font-semibold flex items-center justify-center gap-1.5 text-sm">
-              <Lock className="w-3.5 h-3.5" />
-              Cashout locked · opens after {EARLY_STAGE_MIN}&apos;
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={onCashOut}
-              disabled={cashingOut}
-              className="mt-3 w-full h-12 rounded-lg bg-success text-success-foreground font-bold flex items-center justify-center gap-1.5 hover:brightness-105 active:scale-[0.99] transition disabled:opacity-60"
-            >
-              {cashingOut ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <>
-                  Cashout{' '}
-                  <span className="tabular-nums">
-                    {bet.currency} {formatMoney(cashoutValue, bet.currency)}
-                  </span>
-                </>
-              )}
-            </button>
-          )
-        )}
-
-        {/* Admin-only settle controls for open bets */}
-        {isAdmin && isPending && onSettle && (
-          <div className="mt-2.5 flex items-center gap-2">
-            <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold shrink-0">
-              Settle
-            </span>
-            <button
-              type="button"
-              onClick={() => onSettle('won')}
-              disabled={settling}
-              className="flex-1 h-8 rounded-md bg-success/10 border border-success/40 text-success text-xs font-bold hover:bg-success/20 disabled:opacity-50"
-            >
-              {settling ? '…' : 'Won'}
-            </button>
-            <button
-              type="button"
-              onClick={() => onSettle('lost')}
-              disabled={settling}
-              className="flex-1 h-8 rounded-md bg-destructive/10 border border-destructive/40 text-destructive text-xs font-bold hover:bg-destructive/20 disabled:opacity-50"
-            >
-              {settling ? '…' : 'Lost'}
-            </button>
+        {/* Cash-out stays locked for the whole open bet (until the match closes). */}
+        {isPending && (
+          <div className="mt-3 w-full h-12 rounded-lg bg-secondary border border-border text-muted-foreground font-semibold flex items-center justify-center gap-1.5 text-sm">
+            <Lock className="w-3.5 h-3.5" />
+            Cashout locked
           </div>
         )}
 
