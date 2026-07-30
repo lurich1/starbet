@@ -69,10 +69,34 @@ export async function POST(request: Request) {
   const bytes = new Uint8Array(await file.arrayBuffer())
 
   const supabase = supabaseServer()
-  const { error: uploadErr } = await supabase.storage.from(BUCKET).upload(key, bytes, {
-    contentType: file.type || 'application/octet-stream',
-    upsert: false,
-  })
+  const doUpload = () =>
+    supabase.storage.from(BUCKET).upload(key, bytes, {
+      contentType: file.type || 'application/octet-stream',
+      upsert: false,
+    })
+
+  let { error: uploadErr } = await doUpload()
+
+  // Self-heal: the public `team-flags` bucket is normally created by
+  // scripts/create-team-flags-bucket.mjs, but if that step was skipped the
+  // first upload fails with "Bucket not found". Create it (public) and retry
+  // once so the admin never has to run the script by hand.
+  if (uploadErr && /bucket not found/i.test(uploadErr.message)) {
+    const { error: createErr } = await supabase.storage.createBucket(BUCKET, {
+      public: true,
+      fileSizeLimit: MAX_BYTES,
+      allowedMimeTypes: Array.from(ALLOWED_MIME),
+    })
+    // Ignore "already exists" races — another request may have just made it.
+    if (createErr && !/already exists/i.test(createErr.message)) {
+      return NextResponse.json(
+        { error: `could not create storage bucket: ${createErr.message}` },
+        { status: 500 },
+      )
+    }
+    ;({ error: uploadErr } = await doUpload())
+  }
+
   if (uploadErr) {
     return NextResponse.json(
       { error: `upload failed: ${uploadErr.message}` },
