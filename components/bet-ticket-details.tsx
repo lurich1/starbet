@@ -282,6 +282,12 @@ export function BetTicketDetails({ bet, open, onClose, userName }: BetTicketDeta
               const legWon = legStatus === 'won'
               const legLost = legStatus === 'lost'
               const accent = legWon ? RESULT_GREEN : legLost ? '#e5484d' : '#64748b'
+              // Kick-off time for this match (not the bet-placed time).
+              const koDate = s.match.startTimeISO ? new Date(s.match.startTimeISO) : null
+              const kickoffLabel =
+                koDate && !Number.isNaN(koDate.getTime())
+                  ? `${koDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' })} ${koDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
+                  : s.match.startTime ?? ''
               return (
                 <div
                   key={s.id ?? `${idx}-${s.matchId}`}
@@ -294,8 +300,7 @@ export function BetTicketDetails({ bet, open, onClose, userName }: BetTicketDeta
                     {/* Row: date/time + FT score */}
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-xs font-semibold text-white/60 tabular-nums">
-                        {placedAt.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' })}{' '}
-                        {placedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                        {kickoffLabel}
                       </span>
                       <span className="flex items-center gap-2 shrink-0">
                         {settled && (

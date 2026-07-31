@@ -293,6 +293,16 @@ function BetCard({
             {bet.selections.map((s) => {
               const lm = liveMatches[s.matchId]
               const live = !!lm?.isLive
+              const koDate = s.match.startTimeISO ? new Date(s.match.startTimeISO) : null
+              const kickoffLabel =
+                koDate && !Number.isNaN(koDate.getTime())
+                  ? koDate.toLocaleString(undefined, {
+                      day: '2-digit',
+                      month: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })
+                  : s.match.startTime ?? ''
               return (
                 <div key={s.id}>
                   <div className="flex items-center gap-2">
@@ -317,12 +327,7 @@ function BetCard({
                     )}
                   </div>
                   <p className="mt-0.5 pl-6 text-[11px] text-muted-foreground tabular-nums">
-                    {new Date(bet.placedAt).toLocaleString(undefined, {
-                      day: '2-digit',
-                      month: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
+                    {kickoffLabel}
                   </p>
                 </div>
               )
